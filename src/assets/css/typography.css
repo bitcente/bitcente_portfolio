@@ -1,0 +1,107 @@
+@font-face {
+	font-family: 'Tickerbit';
+	src: url('../fonts/tickerbit-mono.eot');
+	src: url('../fonts/tickerbit-mono.eot?#iefix') format('embedded-opentype'),
+       url('../fonts/tickerbit-mono.woff2') format('woff2'),
+	     url('../fonts/tickerbit-mono.woff') format('woff'),
+	     url('../fonts/tickerbit-mono.ttf') format('truetype'),
+	     url('../fonts/tickerbit-mono.svg#youworkforthem') format('svg');
+	font-weight: normal;
+	font-style: normal;
+}
+
+
+html {
+    font-size: 0.833vw; /* 16px */
+    line-height: 1.2;
+}
+  
+body {
+    font-family: Tickerbit;
+    text-transform: uppercase;
+}
+
+.title-l {
+    font-size: 4.75rem;
+    line-height: 1;
+}
+.title-m {
+    font-size: 2.5rem;
+}
+.title-s {
+    font-size: 2.25rem;
+}
+.title-xs {
+    font-size: 1.75rem;
+}
+.text-m {
+    font-size: 20px;
+}
+.text-base {
+    font-size: 16px;
+}
+.text-s {
+    font-size: 14px;
+}
+.text-xs {
+    font-size: 12px;
+}
+  
+@media screen and (max-width: 1440px) {
+    html {
+      font-size: 1.538vw;
+    }
+    .title-l {
+        font-size: 2.3rem;
+    }
+    .title-m {
+        font-size: 1.75rem;
+    }
+    .title-s {
+        font-size: 1.25rem;
+    }
+
+    .text-m {
+        font-size: 18px;
+    }
+}
+@media screen and (max-width: 1366px) {
+    html {
+      font-size: 1.171vw;
+    }
+}
+@media screen and (max-width: 1024px) {
+    html {
+      font-size: 1.563vw;
+    }
+}
+@media screen and (max-width: 600px) {
+    html {
+      font-size: 2.667vw;
+    }
+
+    .title-m {
+        font-size: 20px;
+    }
+    .title-l {
+        font-size: 36px;
+    }
+    .title-s {
+        font-size: 25px;
+    }
+
+    .text-m {
+        font-size: 20px;
+    }
+    .text-s {
+        font-size: 16px;
+    }
+    
+}
+
+.text-align-center {
+    text-align: center;
+}
+.highlight {
+    text-decoration: underline;
+}

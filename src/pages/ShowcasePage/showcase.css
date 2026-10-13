@@ -1,0 +1,335 @@
+/* SHOWCASE PAGE */
+
+.showcase {
+  /* space left above and below the screen, like the bezel of an old handheld */
+  --sc-top: 143px;
+  --sc-bottom: 110px;
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.showcase button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+}
+
+/* SCREEN */
+
+.sc-screen {
+  position: absolute;
+  top: var(--sc-top);
+  bottom: var(--sc-bottom);
+  left: 0;
+  width: 100%;
+  visibility: hidden;
+}
+
+.sc-carousel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+/* as tall as the window (see Carousel.resize), the pointer is still tracked on .sc-carousel only */
+.sc-carousel canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  pointer-events: none;
+}
+
+/* HUD */
+
+.sc-hud {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--sc-bottom);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  /* opacity too, so GSAP's first autoAlpha tween starts from 0 instead of flashing it */
+  opacity: 0;
+  visibility: hidden;
+  user-select: none;
+}
+
+.sc-hud__project {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.sc-hud__project h2 {
+  animation: blink .12s steps(1, end) 2 reverse;
+}
+
+.sc-hud__project .award {
+  height: 2.25rem;
+  transform: translate(0px, 0.4rem);
+}
+
+.sc-hud__tags {
+  display: flex;
+  gap: 8px;
+}
+.sc-hud__tags .p-tag {
+  pointer-events: none;
+}
+
+.sc-hud__hint {
+  margin-left: auto;
+  text-align: right;
+}
+
+/* PROJECT DETAIL */
+
+.sc-detail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  visibility: hidden;
+  /* same background as .global, vignette included */
+  background-color: var(--bg-green-secondary);
+  box-shadow: inset 0 0 1000px var(--bg-green-primary);
+}
+
+.sc-detail__close {
+  position: absolute;
+  top: 64px;
+  right: 52px;
+  z-index: 2;
+}
+/* just the X, without the box of .pv__close */
+.showcase .sc-detail__close {
+  --size: 48px;
+  border: none !important;
+  background: none;
+  font-size: 7.75rem;
+  line-height: 1;
+  transition: transform .1s steps(2);
+}
+.showcase .sc-detail__close:hover {
+  background: none;
+  color: var(--green-1);
+  transform: scale(1.2);
+}
+
+/* vertical bar that fills up as the page is scrolled */
+.sc-detail__progress {
+  --progress: 0;
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 32px;
+  width: 6px;
+  z-index: 2;
+  pointer-events: none;
+}
+.sc-detail__progress-bar {
+  width: 100%;
+  height: 100%;
+  background-color: var(--green-1);
+  transform: scaleY(var(--progress));
+  transform-origin: top;
+}
+
+.sc-detail__scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 60px 90px 70px;
+}
+.sc-detail__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sc-detail__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 70px;
+}
+
+.sc-detail__header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  align-items: end;
+}
+
+.sc-detail__title {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sc-detail__title .award {
+  height: 4rem;
+}
+
+.sc-detail__summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.sc-detail p {
+  color: var(--green-2);
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.sc-detail p strong, .sc-detail p u {
+  color: var(--green-1);
+}
+.sc-detail p strong {
+  font-weight: bold;
+}
+
+.sc-detail__section.has-both {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 50px;
+  align-items: center;
+}
+/* text and media swap sides on every other section */
+.sc-detail__section.has-both:nth-of-type(even) {
+  grid-template-columns: 3fr 2fr;
+}
+.sc-detail__section.has-both:nth-of-type(even) .sc-detail__media {
+  order: -1;
+}
+
+.sc-detail__text {
+  max-width: 620px;
+}
+.sc-detail__text h3:not(:last-child) {
+  margin-bottom: 14px;
+}
+
+.sc-detail__media {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.sc-detail__media img, .sc-detail__media video {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  /* never taller than the screen */
+  max-height: calc(100dvh - 160px);
+  pointer-events: none;
+}
+
+/* low resolution copy drawn over the media while it's revealed */
+.sc-detail__pixels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* the letters typed one by one are inline-block, and underlines don't propagate into those */
+.sc-detail u .sc-detail__char {
+  text-decoration: underline;
+}
+
+.sc-detail__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+@media screen and (max-width: 1024px) {
+  /* no room for them next to the small logo */
+  .showcase .socials, .showcase .bitcente-icon__wrapper {
+    transition: opacity .3s ease;
+  }
+  .showcase.content .socials, .showcase.content .bitcente-icon__wrapper {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+
+  .sc-detail__scroll {
+    padding: 60px 40px;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .showcase {
+    --sc-top: 122px;
+    --sc-bottom: 96px;
+    height: 100dvh;
+  }
+
+  .showcase .scroll-down {
+    display: block;
+    width: max-content;
+  }
+
+  .sc-hud {
+    padding: 0 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+  }
+  .sc-hud__hint {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .sc-detail__progress {
+    display: none;
+  }
+  .sc-detail__close {
+    top: 14px;
+    right: 14px;
+  }
+  .sc-detail__scroll {
+    padding: 64px 20px 50px;
+  }
+  .sc-detail__inner {
+    gap: 46px;
+  }
+  .sc-detail__header {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .sc-detail__title .award {
+    height: 35px;
+  }
+  .sc-detail__section.has-both, .sc-detail__section.has-both:nth-of-type(even) {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .sc-detail__section.has-both:nth-of-type(even) .sc-detail__media {
+    order: 0;
+  }
+}

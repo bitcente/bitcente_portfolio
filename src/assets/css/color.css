@@ -1,0 +1,22 @@
+:root {
+    --bg-green-primary: rgb(127,142,90);
+    --bg-green-secondary: rgb(168,185,135);
+
+    --green-1: #0D1403;
+    --green-2: #576833;
+    --green-3: #7F8E5A;
+    --green-4: #A8B987;
+}
+
+.green-1 {
+    color: var(--green-1);
+}
+.green-2 {
+    color: var(--green-2);
+}
+.green-3 {
+    color: var(--green-3);
+}
+.green-4 {
+    color: var(--green-4);
+}
