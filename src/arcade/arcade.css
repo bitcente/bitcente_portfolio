@@ -1,0 +1,68 @@
+/* ARCADE: the pages are shown through the screens of the machines of a three.js room */
+
+/* One per machine, with its page running inside, all of them as big as the window. In the room, ArcadeRoom.tsx
+   transforms each one onto the screen of its machine (nowhere to be seen until then) */
+.arcade__screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 0;
+  overflow: hidden;
+  transform-origin: 0 0;
+  transform: scale(0);
+}
+.arcade__screen.is-playing {
+  transform: none;
+}
+
+/* while a machine is being played the other pages keep running, but they aren't laid out or painted */
+.arcade:not(.is-out) .arcade__screen:not(.is-playing) {
+  display: none;
+}
+
+.arcade.is-out .arcade__screen {
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* the canvas has holes where the screens are, so it goes over them */
+.arcade__room {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+}
+.arcade.is-out .arcade__room {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.arcade__hint {
+  position: fixed;
+  left: 50%;
+  bottom: 5vh;
+  z-index: 2;
+  transform: translateX(-50%);
+  color: #a8b987;
+  font-size: 20px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease;
+}
+.arcade.is-room .arcade__hint {
+  opacity: .8;
+  transition-delay: 1.2s;
+}
+
+@media screen and (max-width: 600px) {
+  .arcade__hint {
+    font-size: 14px;
+  }
+}

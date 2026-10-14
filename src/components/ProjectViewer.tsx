@@ -3,6 +3,7 @@ import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
 import { InertiaPlugin } from "gsap/InertiaPlugin";
 import { useBitcenteStore } from "../store";
+import { useEscapeClaim } from "../arcade/store";
 import { Sound } from "../classes/SoundBoard";
 import { JobMap, ProjectSlide, ProjectType } from "../settings";
 import { formatText } from "../utils/Text";
@@ -32,8 +33,10 @@ export default function ProjectViewer({ project, onClose }: ProjectViewerProps) 
   const currentRef = useRef(0)
 
   const isOpen = !!project
+  // ESC closes the viewer before it leaves the arcade machine
+  useEscapeClaim(isOpen)
   const shown = project ?? content
-  // cover slides are only for the /showcase carousel
+  // cover slides are only for the showcase carousel
   const visibleSlides = shown?.slides?.filter(({ cover }) => !cover)
   const slides: ProjectSlide[] = visibleSlides?.length
     ? visibleSlides

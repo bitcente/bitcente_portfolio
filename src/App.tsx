@@ -1,37 +1,24 @@
 import './App.css'
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from "react-router-dom";
 import HomePage from './pages/HomePage';
-import PokemonGameBoy from './pages/PokemonPage/PokemonPage';
-import ShowcasePage from './pages/ShowcasePage/ShowcasePage';
 import SoundBoard from './components/SoundBoard';
 import Cursor from './components/Cursor';
 import CrtOverlay from './components/CrtOverlay';
+import Arcade from './arcade/Arcade';
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <HomePage/>,
-  },
-  {
-    path: "/showcase",
-    element: <ShowcasePage/>,
-  },
-  {
-    path: "/pokemon",
-    element: <PokemonGameBoy/>,
-  },
-])
+// the original portfolio isn't in any arcade machine, it's shown on its own
+const STANDALONE_PATH = "/old"
 
 function App() {
+  const standalone = window.location.pathname === STANDALONE_PATH
 
   return (<>
     <SoundBoard />
     <Cursor />
-    <CrtOverlay />
-    <RouterProvider router={router} />
+    { standalone && <>
+      <CrtOverlay />
+      <HomePage />
+    </> }
+    { !standalone && <Arcade /> }
   </>
   );
 }

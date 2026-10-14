@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { KEYMAP } from "../constants";
+import { usePlaying } from "../../../arcade/store";
 import type { Btn } from "../types";
 
 /**
@@ -28,7 +29,14 @@ export function useGameInput() {
     };
   }, []);
 
+  // the keyboard is only for this game while its arcade machine is the one being played
+  const playing = usePlaying();
+
   useEffect(() => {
+    if (!playing) {
+      held.current.clear();
+      return;
+    }
     const norm = (k: string) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e: KeyboardEvent) => {
       const b = KEYMAP[norm(e.key)];
@@ -49,7 +57,7 @@ export function useGameInput() {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
     };
-  }, [press, release]);
+  }, [press, release, playing]);
 
   return { held, press, release, subscribe };
 }

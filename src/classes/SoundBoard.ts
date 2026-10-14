@@ -5,6 +5,7 @@ export enum Sound {
     Hover = "hover.mp3",
     OpenLink = "open_link.mp3",
     Eat = "eat.wav",
+    Secret = "secret.mp3",
 
     // LETTERS
     A = "a.wav",

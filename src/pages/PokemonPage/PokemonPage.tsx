@@ -32,7 +32,8 @@
  *   components/evolution/       Evolution cutscene (3D scene + dust and light effects)
  *   components/battle/          Battle HUD + 3D scene, creatures, camera, MoveFx (attack visual effects)
  *
- * Keyboard: arrows/WASD move · Z/Space = A · X/Esc = B · Enter = Start
+ * Keyboard: arrows/WASD move · Z/Space = A · X/Backspace = B · Enter = Start
+ * (Esc is taken by the arcade room, see src/arcade)
  */
 import type { CSSProperties } from "react";
 import "./pokemon.css";

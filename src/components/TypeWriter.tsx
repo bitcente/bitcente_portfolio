@@ -26,6 +26,21 @@ const soundMap: { [key: string]: Sound | undefined } = {
 	"z": Sound.Z,
 };
 
+// false when the element or anything around it is hidden (display: none, visibility: hidden or opacity: 0),
+// like Bitcente on mobile once the carousel is shown
+function isShown(element: HTMLElement | null) {
+	if (!element) return false;
+	// older browsers don't have checkVisibility
+	if (typeof element.checkVisibility === "function") {
+		return element.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true } as CheckVisibilityOptions);
+	}
+	for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+		const style = getComputedStyle(node);
+		if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
+	}
+	return true;
+}
+
 export default function Typewriter({
   speakTextGroup,
   speed = 100,
@@ -45,10 +60,17 @@ export default function Typewriter({
   const [displayed, setDisplayed] = useState("");
   const currentTextIndex = useRef(0); // persistent index
   const indexRef = useRef(0); // persistent index
+	const textRef = useRef<HTMLSpanElement>(null);
 	let allTimeoutRefs = useRef<number[]>([]);
 
-	const type = (text: string) => {
+	const type = (text: string, instant = false) => {
 		if (!text) return;
+		if (instant) {
+			setDisplayed(text);
+			indexRef.current = text.length;
+			endOfTextCallback && endOfTextCallback({ lastText: currentTextIndex.current == speakTextGroup.texts.length - 1 });
+			return;
+		}
 		const i = indexRef.current;
 		
 		if (i < text.length) {
@@ -61,7 +83,8 @@ export default function Typewriter({
 				letter += randomChoice;
 			}
 			const sound = soundMap[letter];
-			if (sound) {
+			// keeps typing while hidden, but quietly
+			if (sound && isShown(textRef.current)) {
 				playSound(sound);
 			}
 			indexRef.current++;
@@ -88,7 +111,7 @@ export default function Typewriter({
 				allTimeoutRefs.current.push(setTimeout(() => {
 					setDisplayed("");
 					indexRef.current = 0;
-					type(speakText.text);
+					type(speakText.text, speakText.instant);
 				}, summedDelay));
 				summedDelay += speakText.duration;
 			});
@@ -118,5 +141,5 @@ export default function Typewriter({
 		setContinueDialog(false);
 	}, [continueDialog]);
 
-  return <span>{displayed}</span>;
+  return <span ref={textRef}>{displayed}</span>;
 }

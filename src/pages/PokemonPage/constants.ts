@@ -34,7 +34,6 @@ export const KEYMAP: Record<string, Btn> = {
   " ": "a",
   x: "b",
   k: "b",
-  Escape: "b",
   Backspace: "b",
   Enter: "start",
 };

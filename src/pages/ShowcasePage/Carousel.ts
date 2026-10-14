@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { gsap } from "gsap"
-import { isTouchDevice } from "../../utils/Screen"
+import { isMobile, isTouchDevice } from "../../utils/Screen"
 import { getPalette, hexToRgb } from "./palette"
 import { fragmentShader, labelFragmentShader, vertexShader } from "./shaders"
 
@@ -28,12 +28,17 @@ const PLANE_HEIGHT = .7
 const PLANE_MAX_WIDTH = .8
 // gap relative to the plane width
 const PLANE_GAP = .12
+// on mobile the planes are narrower and closer together, so the previous and next ones peek in at the sides
+const MOBILE_PLANE_MAX_WIDTH = .7
+const MOBILE_PLANE_GAP = .06
 // rows of lcd pixels in a plane
 const LCD_ROWS = 170
 // 0 is a smooth green tint, 1 a hard 4 tone dither
 const LCD_DITHER = .45
 // how much of the real colours show in the items that are not hovered
-const COLOR_LEAK = .3
+const COLOR_LEAK = 1
+// green pixelated lcd look of the items that goes away on hover. false shows them in real colour all the time
+const LCD_EFFECT = true
 // how fast an item goes in and out of full colour
 const REVEAL_EASE = 4
 const SCROLL_EASE = 6
@@ -49,6 +54,21 @@ const LABEL_SIZE = 16
 const SNAP_DELAY = 180
 // px the pointer can travel and still count as a click
 const CLICK_TOLERANCE = 6
+
+// 3d effects, set to false to turn them off:
+// the row of planes curves away at the sides, like the glass of an old CRT
+const CURVED_SCREEN = true
+// planes bend sideways like a staircase while the carousel moves (dragged or scrolled), the faster the more
+const BEND_ON_SCROLL = true
+// how much they bend at the same speed: 1 is subtle, 2 twice as much...
+const BEND_MULTIPLIER = .8
+// px the sides of the screen go back with CURVED_SCREEN
+const SCREEN_CURVE = -600
+// extra curve while the carousel moves (dragged or scrolled), on top of CURVED_SCREEN or on its own.
+// At full speed the sides go back SCREEN_CURVE times this: 0 turns it off, 1 doubles the curve...
+const CURVE_ON_SCROLL_MULTIPLIER = 1.2
+// curve on mobile relative to the one on desktop (moving or not): 0 is flat, 2 twice as curved...
+const MOBILE_CURVE_MULTIPLIER = .2
 
 // horizontal strips each plane is cut into, every strip bends as a rigid block
 const BEND_STRIPS = 14
@@ -136,10 +156,11 @@ export default class Carousel {
     uPlaneSize: { value: new THREE.Vector2(1, 1) },
     uPixel: { value: 4 },
     uDither: { value: LCD_DITHER },
-    uColorLeak: { value: COLOR_LEAK },
+    // with all the real colour leaking through, the lcd look is gone
+    uColorLeak: { value: LCD_EFFECT ? COLOR_LEAK : 1 },
     uVelocity: { value: 0 },
     uBend: { value: 0 },
-    uCurve: { value: 600 },
+    uCurve: { value: CURVED_SCREEN ? SCREEN_CURVE : 0 },
   }
 
   private scroll = { current: 0, target: 0 }
@@ -149,6 +170,8 @@ export default class Carousel {
   private planeWidth = 1
   private planeHeight = 1
   private spacing = 1
+  // SCREEN_CURVE for the current device
+  private screenCurve = SCREEN_CURVE
 
   private touch = isTouchDevice()
   private pointer = { x: 0, y: 0, inside: false, mouse: false }
@@ -322,9 +345,13 @@ export default class Carousel {
 
     this.width = width
     this.height = height
-    this.planeWidth = Math.round(Math.min(height * PLANE_HEIGHT * PLANE_RATIO, width * PLANE_MAX_WIDTH))
+    const mobile = isMobile()
+    const maxWidth = mobile ? MOBILE_PLANE_MAX_WIDTH : PLANE_MAX_WIDTH
+    const gap = mobile ? MOBILE_PLANE_GAP : PLANE_GAP
+    this.screenCurve = SCREEN_CURVE * (mobile ? MOBILE_CURVE_MULTIPLIER : 1)
+    this.planeWidth = Math.round(Math.min(height * PLANE_HEIGHT * PLANE_RATIO, width * maxWidth))
     this.planeHeight = Math.round(this.planeWidth / PLANE_RATIO)
-    this.spacing = Math.round(this.planeWidth * (1 + PLANE_GAP))
+    this.spacing = Math.round(this.planeWidth * (1 + gap))
     this.scroll.current = current * this.spacing
     this.scroll.target = target * this.spacing
 
@@ -337,11 +364,15 @@ export default class Carousel {
     this.uniforms.uViewport.value.set(width, height)
     this.uniforms.uPlaneSize.value.set(this.planeWidth, this.planeHeight)
     this.uniforms.uPixel.value = Math.max(2, Math.round(this.planeHeight / LCD_ROWS))
-    this.uniforms.uBend.value = this.planeWidth * .07
+    this.uniforms.uBend.value = BEND_ON_SCROLL ? this.planeWidth * .07 * BEND_MULTIPLIER : 0
 
     // the canvas covers the whole window so an opened plane can grow past the container,
     // the camera is shifted to keep the carousel centred in the container
-    const { top } = this.container.getBoundingClientRect()
+    // (offsets instead of getBoundingClientRect, which is off while the page is shown in the arcade room)
+    let top = 0
+    for (let element: Element | null = this.container; element instanceof HTMLElement; element = element.offsetParent) {
+      top += element.offsetTop
+    }
     const viewHeight = window.innerHeight
     this.camera.aspect = width / viewHeight
     this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(viewHeight / 2 / CAMERA_DISTANCE))
@@ -439,6 +470,8 @@ export default class Carousel {
     scroll.current += (scroll.target - scroll.current) * (1 - Math.exp(-delta * SCROLL_EASE))
     const velocity = THREE.MathUtils.clamp((scroll.current - previous) / delta / MAX_SPEED, -1.5, 1.5)
     this.uniforms.uVelocity.value += (velocity - this.uniforms.uVelocity.value) * (1 - Math.exp(-delta * 10))
+    const speed = Math.min(Math.abs(this.uniforms.uVelocity.value), 1)
+    this.uniforms.uCurve.value = (CURVED_SCREEN ? this.screenCurve : 0) + this.screenCurve * CURVE_ON_SCROLL_MULTIPLIER * speed
 
     let closest = this.planes[0]
     this.planes.forEach((plane, i) => {

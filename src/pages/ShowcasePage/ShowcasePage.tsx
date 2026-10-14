@@ -3,6 +3,7 @@ import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
 import { SplitText } from "gsap/SplitText";
 import { useBitcenteStore } from '../../store'
+import { useEscapeClaim, usePlaying } from '../../arcade/store';
 import { Sound } from '../../classes/SoundBoard';
 import { JobMap, projects } from '../../settings';
 import { isMobile as isDeviceMobile } from '../../utils/Screen';
@@ -68,6 +69,12 @@ function ShowcasePage() {
 
   const isMobile = isDeviceMobile();
   const isOpen = openedProject !== null
+  // the other arcade machines keep their pages running, this one only gets input while it's the one played
+  const playing = usePlaying()
+  const playingRef = useRef(playing)
+  playingRef.current = playing
+  // ESC closes the project before it leaves the arcade machine
+  useEscapeClaim(playing && isOpen)
   const shownProject = projects[openedProject ?? hoveredProject ?? activeProject]
 
   const pointerEvents = {
@@ -191,6 +198,8 @@ function ShowcasePage() {
   }, [isOpen])
 
   useEffect(() => {
+    if (!playing) return
+
     const scrollEvent = (e: WheelEvent) => {
       if (!canMove || !started || isOpen) return
       if (view === View.Carousel) {
@@ -236,7 +245,7 @@ function ShowcasePage() {
       window.removeEventListener("touchstart", touchStartEvent)
       window.removeEventListener("touchend", touchEndEvent)
     }
-  }, [canMove, started, view, isOpen])
+  }, [canMove, started, view, isOpen, playing])
 
   // Initial "Game Boy Advance" Style Animation
   useEffect(() => {
@@ -403,6 +412,7 @@ function ShowcasePage() {
   useEffect(() => {
     const events = isMobile ? ["touchstart"] : ["keydown", "click"]
     const startExperience = () => {
+      if (!playingRef.current) return
       setCursorPointer(false);
       gsap.to('.start-screen', {
         opacity: 0,

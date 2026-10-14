@@ -17,8 +17,8 @@ export const JobMap = {
 // One page of the project viewer carousel. Every field is optional (e.g. only an image).
 // text supports *bold*, _underline_ and \n, image is a path inside /public (e.g. 'img/projects/popin_1.png')
 // width is any CSS width relative to the carousel (e.g. '50%', '320px'), defaults to --pv-slide-width in App.css
-// video is a path inside /public (e.g. 'video/projects/popin_1.mp4'), only shown in the /showcase detail page (muted, looped)
-// cover: true makes the slide's video (or image) the one shown in the /showcase carousel, and hides the slide everywhere else
+// video is a path inside /public (e.g. 'video/projects/popin_1.mp4'), only shown in the showcase detail page (muted, looped)
+// cover: true makes the slide's video (or image) the one shown in the showcase carousel, and hides the slide everywhere else
 export interface ProjectSlide {
     title?: string,
     text?: string,
@@ -28,7 +28,7 @@ export interface ProjectSlide {
     cover?: boolean,
 }
 
-// What the /showcase carousel shows for a project: its cover slide, then video (a muted loop,
+// What the showcase carousel shows for a project: its cover slide, then video (a muted loop,
 // e.g. 'video/projects/popin.mp4'), then the first slide image, then a generated title card.
 export interface ProjectType {
     name: string,

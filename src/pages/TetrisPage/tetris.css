@@ -1,0 +1,119 @@
+/* TETRIS PAGE */
+
+.tetris {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  /* same background as .global */
+  background: var(--bg-green-secondary);
+  box-shadow: inset 0 0 1000px var(--bg-green-primary);
+  user-select: none;
+  touch-action: none;
+}
+
+.tetris__game {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.tetris__board {
+  position: relative;
+  padding: 6px;
+  border: 4px solid var(--green-1);
+  line-height: 0;
+}
+.tetris__board canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* title, pause and game over, over the board */
+.tetris__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  line-height: 1.2;
+  background-color: rgba(168, 185, 135, .88);
+}
+
+.tetris__hud {
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.tetris__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tetris__stat--next canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.tetris__controls {
+  display: flex;
+  gap: 10px;
+}
+.tetris__button {
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid var(--green-1);
+  background: none;
+  color: var(--green-1);
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  touch-action: none;
+}
+.tetris__button:active {
+  background-color: var(--green-1);
+  color: var(--green-4);
+}
+/* a bit of air between moving and the buttons that commit the piece */
+.tetris__button--rotate {
+  margin-left: 16px;
+}
+
+/* portrait: the hud goes in a row over the board */
+@media screen and (max-aspect-ratio: 4/5) {
+  .tetris {
+    gap: 14px;
+  }
+  .tetris__game {
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 12px;
+  }
+  .tetris__hud {
+    min-width: 0;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 22px;
+  }
+  .tetris__stat .title-s {
+    font-size: 22px;
+  }
+}

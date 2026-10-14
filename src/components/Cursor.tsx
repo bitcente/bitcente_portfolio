@@ -28,6 +28,8 @@ export default function Cursor() {
                 initiated.current = true
             }
 
+            document.body.classList.remove('cursor-out')
+
             if (document.body.classList.contains('mouse-stopped')) {
                 document.body.classList.remove('mouse-stopped')
             }
@@ -38,6 +40,11 @@ export default function Cursor() {
                     document.body.classList.add('mouse-stopped')
                 }
             }, 2500);
+        })
+
+        // hidden while the real cursor is out of the window
+        document.documentElement.addEventListener('pointerleave', () => {
+            document.body.classList.add('cursor-out')
         })
     }, [])
     

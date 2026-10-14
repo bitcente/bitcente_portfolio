@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useBitcenteStore } from "../store";
 import TypeWriter from "./TypeWriter";
+import PixelStars from "./PixelStars";
 import { Sound } from "../classes/SoundBoard";
 import { isMobile } from "../utils/Screen";
+import { MachineContext } from "../arcade/store";
 
 export enum BitcenteIconState {
     IDLE = "bitcente_idle.gif",
@@ -22,6 +24,8 @@ export type SpeakText = {
     text: string;
     delay: number;
     duration: number;
+    // shown all at once instead of typed letter by letter
+    instant?: boolean;
 }
 
 const textsToSpeak: SpeakTextGroup[] = [
@@ -116,6 +120,29 @@ const textsToSpeakMobile: SpeakTextGroup[] = [
     }
 ]
 
+// pizza from which Bitcente tells his secret every time he eats
+const FEEDS_FOR_SECRET = 2
+// ms after the eating sound that the secret jingle plays, the first time he tells it
+const SECRET_SOUND_DELAY = 150
+
+// outside of the arcade there's no secret, from the second pizza on the thanks is said all at once
+const repeatedThanks: SpeakTextGroup = {
+    state: "EATING",
+    interactive: false,
+    texts: [
+        {text: "Delicious! Thank you so much <3", delay: 0, duration: 6000, instant: true},
+    ],
+}
+
+// what he says instead of the thanks from the pizza that makes him tell the secret on
+const secretTexts: SpeakTextGroup = {
+    state: "EATING",
+    interactive: false,
+    texts: [
+        {text: "I like you! I will let you play in my arcade room. Press ESC!", delay: 0, duration: 12000},
+    ],
+}
+
 export default function BitcenteIcon({
     started = false,
     draggingPizza = false,
@@ -132,6 +159,11 @@ export default function BitcenteIcon({
     const [state, setState] = useState(BitcenteIconState.IDLE);
     const [waitingForInput, setWaitingForInput] = useState(false);
     const [speakingTexts, setSpeakingTexts] = useState<SpeakTextGroup | null>(null);
+
+    // the secret is about the arcade room, so only when he's in one of its machines
+    const inArcade = useContext(MachineContext) >= 0;
+    const feeds = useRef(0);
+    const secretSound = useRef<number>();
 
     const textRef = useRef<HTMLDivElement>(null);
 
@@ -181,7 +213,9 @@ export default function BitcenteIcon({
                 texts = allTexts.find(group => group.state === "STOPPED");
                 break;
             case BitcenteIconState.EATING:
-                texts = allTexts.find(group => group.state === "EATING");
+                if (inArcade && feeds.current >= FEEDS_FOR_SECRET) texts = secretTexts;
+                else if (feeds.current > 1) texts = repeatedThanks;
+                else texts = allTexts.find(group => group.state === "EATING");
                 break;
             default:
                 break;
@@ -204,11 +238,19 @@ export default function BitcenteIcon({
     useEffect(() => {
         if (!started) return;
         if (bitcenteEating) {
+            feeds.current++;
             setState(BitcenteIconState.EATING);
             playSound(Sound.Eat);
             setBitcenteEating(false);
+            // only once per visit, it isn't remembered after a reload. (Not cleared by this effect: setting
+            // bitcenteEating back to false runs it again right away)
+            if (inArcade && feeds.current === FEEDS_FOR_SECRET) {
+                secretSound.current = window.setTimeout(() => playSound(Sound.Secret), SECRET_SOUND_DELAY);
+            }
         }
     }, [started, bitcenteEating]);
+
+    useEffect(() => () => clearTimeout(secretSound.current), []);
 
     return <>
         <div className="bitcente-icon__wrapper" onClick={handleFullClick}>
@@ -220,6 +262,8 @@ export default function BitcenteIcon({
                 onClick={handleIconClick}
             />
             { state === BitcenteIconState.IDLE && <div className="bitcente-icon__blinking-border"></div> }
+            {/* he's happy while telling the secret */}
+            <PixelStars active={ speakingTexts === secretTexts } />
             <div className={"bitcente-icon__text text-base " + (speakingTexts?.interactive ? "interactive" : "")} ref={textRef}
                 onPointerEnter={() => {speakingTexts?.interactive && setCursorPointer(true)}}
                 onPointerOut={() => {speakingTexts?.interactive && setCursorPointer(false)}}
