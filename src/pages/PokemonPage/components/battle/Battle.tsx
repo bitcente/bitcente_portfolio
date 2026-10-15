@@ -38,6 +38,7 @@ import type {
   Trainer,
 } from "../../types";
 import { sleep } from "../../utils";
+import { useArcadeStore, usePlaying } from "../../../../arcade/store";
 import { BagPanel } from "../panels/BagPanel";
 import { TeamPanel } from "../panels/TeamPanel";
 import type { BallState } from "./Ball";
@@ -55,6 +56,8 @@ interface Props {
   subscribe: InputSubscribe;
   /** Returns the final team and inventory (HP, exp, level, caught creatures, items used). */
   onFinish: (result: BattleResult, team: PartyMember[], inventory: Inventory) => void;
+  /** The enemy fainted: the battle is won (EXP and level ups still to come). */
+  onVictory?: () => void;
 }
 
 type Phase = "intro" | "menu" | "moves" | "bag" | "potion" | "team" | "forced" | "busy";
@@ -77,7 +80,11 @@ function useSynced<T>(initial: T) {
   return [value, ref, set] as const;
 }
 
-export function Battle({ team: team0, inventory, enemy, trainer, scale, subscribe, onFinish }: Props) {
+export function Battle({ team: team0, inventory, enemy, trainer, scale, subscribe, onFinish, onVictory }: Props) {
+  // no frames while another arcade machine is being played and this page is hidden
+  const playing = usePlaying();
+  const settled = useArcadeStore((state) => state.settled);
+  const onScreen = playing || !settled;
   const [team, teamRef, setTeam] = useSynced(team0);
   const [inv, invRef, setInv] = useSynced(inventory);
   const [active, activeRef, setActive] = useSynced(Math.max(0, team0.findIndex((m) => m.hp > 0)));
@@ -326,6 +333,7 @@ export function Battle({ team: team0, inventory, enemy, trainer, scale, subscrib
   /* ------------------------- turn flow ------------------------- */
 
   const victory = async () => {
+    onVictory?.();
     setMsg(`${foe} fainted!`);
     setEAnim("faint");
     await sleep(1500);
@@ -582,6 +590,7 @@ export function Battle({ team: team0, inventory, enemy, trainer, scale, subscrib
       <Canvas
         className="gb-battle-canvas"
         dpr={1 / scale}
+        frameloop={onScreen ? "always" : "never"}
         gl={{ antialias: false }}
         camera={{ position: [0, 2.6, 9.8], fov: BATTLE_FOV }}
       >

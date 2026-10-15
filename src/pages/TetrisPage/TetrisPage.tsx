@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useArcadeStore, usePlaying } from "../../arcade/store"
 import { isTouchDevice } from "../../utils/Screen"
-import Tetris, { CLEAR_TIME, COLS, ROWS, shapeOf } from "./tetris"
+import { makesTheBoard, useLeaderboard } from "../../leaderboard"
+import Tetris, { CLEAR_TIME, COLS, QUEUE_SIZE, ROWS, shapeOf } from "./tetris"
+import NameEntry, { Letters, lettersToName, NAME_LENGTH, nameKey } from "./NameEntry"
+import { popBonus, shake } from "./effects"
+import { SpeakerIcon, useMuteButton } from "../../components/MuteButton"
+import { Sound, soundBoard } from "../../classes/SoundBoard"
+import type { GameSound } from "./tetris"
 import "./tetris.css"
 
 // the 4 greens of the web, from dark to light
 const PALETTE = ["#0D1403", "#576833", "#7F8E5A", "#A8B987"]
 const BOARD_COLOR = "#97a876"
-// ms between repeats while a touch button is held
-const TOUCH_REPEAT = 90
-
-type Action = "left" | "right" | "down" | "rotate" | "drop"
+type Action = "left" | "right" | "down" | "rotate" | "drop" | "hold"
 
 // biggest block that lets the whole board fit next to (or, in portrait, under) the hud
 function blockSize() {
@@ -89,13 +92,55 @@ function prepare(canvas: HTMLCanvasElement, width: number, height: number) {
   return ctx
 }
 
+// volume most of the sounds play at, and the one of a piece landing, which is heard all the time
+const QUIET = .45
+const QUIETEST = .2
+
+// music while a game is being played (not paused), looped
+const MUSIC = "/audio/tetris/tetris_music.mp3"
+const MUSIC_VOLUME = .15
+
+// semitones the line sound can go up with the bonus, an octave
+const MAX_LINE_PITCH = 12
+
+// sound and volume (0 to 1) of what happens in the game. Moving and rotating are silent
+const SOUNDS: Partial<Record<GameSound, [Sound, number]>> = {
+  land: [Sound.TetrisLand, QUIETEST],
+  line: [Sound.TetrisLine, QUIET],
+  pause: [Sound.TetrisPause, QUIET],
+  over: [Sound.TetrisGameOver, QUIET],
+}
+
+// a piece centred in a box 4 blocks wide and 2 high, or the box empty
+function drawPreview(canvas: HTMLCanvasElement | null, type: number | null, size: number) {
+  if (!canvas) return
+  const block = Math.max(6, Math.round(size * .7))
+  const ctx = prepare(canvas, block * 4, block * 2)
+  if (!ctx) return
+  ctx.clearRect(0, 0, block * 4, block * 2)
+  if (type === null) return
+
+  const rows = shapeOf(type).filter((row) => row.some(Boolean))
+  const columns = shapeOf(type)[0].map((_, x) => x).filter((x) => rows.some((row) => row[x]))
+  const left = (4 - columns.length) / 2 - columns[0]
+  const top = (2 - rows.length) / 2
+  rows.forEach((row, y) => row.forEach((filled, x) => {
+    if (filled) drawBlock(ctx, (left + x) * block, (top + y) * block, block, type)
+  }))
+}
+
 const hudOf = (game: Tetris) => ({
   score: game.score,
   lines: game.lines,
   level: game.level,
   status: game.status,
-  next: game.next,
+  queue: [...game.queue],
+  hold: game.hold,
 })
+
+// what the game over screen shows: nothing yet (checking the leaderboard), the name entry for a score that made
+// it, the score being saved, or the leaderboard
+type Ending = "checking" | "entry" | "saving" | "board"
 
 export default function TetrisPage() {
   const game = useMemo(() => new Tetris(), [])
@@ -103,28 +148,120 @@ export default function TetrisPage() {
   const [size, setSize] = useState(blockSize)
 
   const boardRef = useRef<HTMLCanvasElement>(null)
-  const nextRef = useRef<HTMLCanvasElement>(null)
+  const queueRefs = useRef<(HTMLCanvasElement | null)[]>([])
+  const boardWrapRef = useRef<HTMLDivElement>(null)
+  const holdRef = useRef<HTMLCanvasElement>(null)
 
   const touch = isTouchDevice()
+  const mute = useMuteButton()
   // the keyboard is only for this game while its arcade machine is the one being played
   const playing = usePlaying()
+  const settled = useArcadeStore((state) => state.settled)
+  const onScreen = useRef(true)
+  onScreen.current = playing || !settled
+
+  const scores = useLeaderboard((state) => state.scores)
+  const leaderboardStatus = useLeaderboard((state) => state.status)
+  const [ending, setEnding] = useState<Ending>("checking")
+  const [letters, setLetters] = useState<Letters>(() => new Array(NAME_LENGTH).fill(0))
+  const [cursor, setCursor] = useState(0)
+  // position the last score got on the leaderboard, and why it couldn't be saved
+  const [rank, setRank] = useState<number | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const startOrResume = () => {
     if (game.status === "paused") game.togglePause()
     else if (game.status !== "playing") game.start()
   }
 
-  const act = (action: Action) => {
-    if (action === "left") game.move(-1)
-    if (action === "right") game.move(1)
-    if (action === "rotate") game.rotate(1)
-    if (action === "drop") game.hardDrop()
+  const saveScore = () => {
+    setEnding("saving")
+    useLeaderboard.getState().submit({
+      name: lettersToName(letters),
+      score: game.score,
+      lines: game.lines,
+      level: game.level,
+      duration: game.playTime / 1000,
+    })
+      .then(setRank)
+      .catch((error: Error) => setSaveError(error.message))
+      .finally(() => setEnding("board"))
+  }
+
+  // the game over screen can't be skipped while the name is being written or saved
+  const canRestart = hud.status !== "over" || ending === "board"
+
+  // a new game right away, whatever is going on (but not while a name is being written or saved)
+  const restart = () => {
+    if (!canRestart) return
+    music.currentTime = 0
+    game.start()
   }
 
   useEffect(() => {
     game.onChange = () => setHud(hudOf(game))
-    return () => { game.onChange = undefined }
+    // the bonus pops out and the board shakes, harder the bigger the bonus
+    game.onLines = (lines, combo) => {
+      const board = boardWrapRef.current
+      if (!board) return
+      popBonus(board, combo - lines, combo)
+      shake(board, combo)
+    }
+    // straight to the sound board, every sound of a sliding piece counts
+    game.onSound = (sound, combo) => {
+      const entry = SOUNDS[sound]
+      if (!entry) return
+      // a semitone higher for every step of the bonus
+      const semitones = combo ? Math.min(combo - 1, MAX_LINE_PITCH) : 0
+      soundBoard().play(...entry, Math.pow(2, semitones / 12))
+    }
+    return () => {
+      game.onChange = undefined
+      game.onLines = undefined
+      game.onSound = undefined
+    }
   }, [game])
+
+  // only downloaded once somebody actually plays (this page is also loaded by everyone visiting the portfolio)
+  const music = useMemo(() => {
+    const audio = soundBoard().track(new Audio(MUSIC))
+    audio.loop = true
+    audio.volume = MUSIC_VOLUME
+    audio.preload = "none"
+    return audio
+  }, [])
+  useEffect(() => () => music.pause(), [music])
+
+  // plays while the game runs, stops with it paused (also when the player leaves the machine or the tab) and
+  // starts over with every new game
+  useEffect(() => {
+    if (hud.status === "playing") music.play().catch(() => {})
+    else music.pause()
+    if (hud.status === "over" || hud.status === "title") music.currentTime = 0
+  }, [hud.status, music])
+
+  // loaded before they're needed, so the first move isn't silent
+  useEffect(() => {
+    Object.values(SOUNDS).forEach(([sound]) => { soundBoard().loadSound(sound).catch(() => {}) })
+  }, [])
+
+  useEffect(() => {
+    if (useLeaderboard.getState().status === "idle") useLeaderboard.getState().refresh()
+  }, [])
+
+  // at the end of a game, the latest leaderboard says whether the score makes it
+  useEffect(() => {
+    if (hud.status !== "over") return
+    setEnding("checking")
+    setRank(null)
+    setSaveError(null)
+    setCursor(0)
+    let alive = true
+    useLeaderboard.getState().refresh().then(() => {
+      if (alive) setEnding(makesTheBoard(game.score) ? "entry" : "board")
+    })
+    return () => { alive = false }
+  }, [hud.status])
 
   useEffect(() => {
     const resize = () => setSize(blockSize())
@@ -146,30 +283,23 @@ export default function TetrisPage() {
       // a long frame (tab in the background...) doesn't make the piece fall all at once
       game.update(Math.min(time - last, 100))
       last = time
-      drawBoard(ctx, game, size)
+      // nothing to draw while another arcade machine is being played and this page is hidden
+      if (onScreen.current) drawBoard(ctx, game, size)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [game, size])
 
-  // next piece, centred in its box
+  // next piece and the one kept aside, each centred in its box
   useEffect(() => {
-    const canvas = nextRef.current
-    if (!canvas) return
-    const block = Math.max(6, Math.round(size * .7))
-    const ctx = prepare(canvas, block * 4, block * 2)
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, block * 4, block * 2)
-    if (hud.status === "title") return
-    const rows = shapeOf(hud.next).filter((row) => row.some(Boolean))
-    const columns = shapeOf(hud.next)[0].map((_, x) => x).filter((x) => rows.some((row) => row[x]))
-    const left = (4 - columns.length) / 2 - columns[0]
-    const top = (2 - rows.length) / 2
-    rows.forEach((row, y) => row.forEach((filled, x) => {
-      if (filled) drawBlock(ctx, (left + x) * block, (top + y) * block, block, hud.next)
-    }))
-  }, [hud.next, hud.status, size])
+    // the first one at full size, the ones after it smaller
+    queueRefs.current.forEach((canvas, i) => {
+      drawPreview(canvas, hud.status === "title" ? null : hud.queue[i], i ? size * .6 : size)
+    })
+  }, [hud.queue.join(), hud.status, size])
+  useEffect(() => {
+    drawPreview(holdRef.current, hud.hold, size)
+  }, [hud.hold, size])
 
   useEffect(() => {
     if (!playing) return
@@ -179,25 +309,42 @@ export default function TetrisPage() {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
 
       if (game.status !== "playing") {
-        if (e.repeat) return
+        if (game.status === "over" && ending === "entry") {
+          if (e.key === "Enter") return saveScore()
+          const next = nameKey(e.key, letters, cursor)
+          if (next) {
+            e.preventDefault()
+            setLetters(next[0])
+            setCursor(next[1])
+          }
+          return
+        }
+        if (e.repeat || !canRestart) return
         // not space: the last drop of a lost game would start the next one right away
         if (key === "Enter" || (key === "p" && game.status === "paused")) startOrResume()
+        if (key === "r" && game.status === "paused") restart()
         return
       }
 
-      if (key === "ArrowLeft" || key === "a") game.move(-1)
-      if (key === "ArrowRight" || key === "d") game.move(1)
-      if (key === "ArrowDown" || key === "s") game.softDrop = true
+      // the game slides the piece itself while left or right is held, the key repeat of the system is ignored
       if (e.repeat) return
+      if (key === "ArrowLeft" || key === "a") game.press(-1)
+      if (key === "ArrowRight" || key === "d") game.press(1)
+      if (key === "ArrowDown" || key === "s") game.softDrop = true
       if (key === "ArrowUp" || key === "w" || key === "x") game.rotate(1)
       if (key === "z") game.rotate(-1)
       if (key === " ") game.hardDrop()
       if (key === "p") game.togglePause()
+      if (key === "r") restart()
+      if (e.key === "Shift" || key === "c") game.swapHold()
     }
     const up = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") game.softDrop = false
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+      if (key === "ArrowLeft" || key === "a") game.release(-1)
+      if (key === "ArrowRight" || key === "d") game.release(1)
+      if (key === "ArrowDown" || key === "s") game.softDrop = false
     }
-    const blur = () => { game.softDrop = false }
+    const blur = () => game.releaseAll()
 
     window.addEventListener("keydown", down)
     window.addEventListener("keyup", up)
@@ -207,7 +354,7 @@ export default function TetrisPage() {
       window.removeEventListener("keyup", up)
       window.removeEventListener("blur", blur)
     }
-  }, [game, playing])
+  }, [game, playing, ending, letters, cursor, canRestart])
 
   // nobody is at the machine once the player steps back into the arcade room, plays another one or leaves the tab
   useEffect(() => {
@@ -225,31 +372,30 @@ export default function TetrisPage() {
     }
   }, [game])
 
-  // a held touch button repeats, like a held key does
-  const repeat = useRef<number>()
-  const release = () => {
-    clearInterval(repeat.current)
-    game.softDrop = false
-  }
+  // touch buttons work like the keys: left and right slide the piece while held, down drops it faster
   const press = (action: Action) => {
-    release()
-    if (action === "down") {
-      game.softDrop = true
-      return
-    }
-    act(action)
-    if (action === "left" || action === "right") repeat.current = window.setInterval(() => act(action), TOUCH_REPEAT)
+    if (action === "left") game.press(-1)
+    if (action === "right") game.press(1)
+    if (action === "down") game.softDrop = true
+    if (action === "rotate") game.rotate(1)
+    if (action === "drop") game.hardDrop()
+    if (action === "hold") game.swapHold()
   }
-  useEffect(() => release, [])
+  const release = (action: Action) => {
+    if (action === "left") game.release(-1)
+    if (action === "right") game.release(1)
+    if (action === "down") game.softDrop = false
+  }
+  useEffect(() => () => game.releaseAll(), [game])
 
   const button = (action: Action, label: string, name: string) => (
     <button
       className={ "tetris__button tetris__button--" + action }
       aria-label={ name }
       onPointerDown={ (e) => { e.preventDefault(); press(action) } }
-      onPointerUp={ release }
-      onPointerLeave={ release }
-      onPointerCancel={ release }
+      onPointerUp={ () => release(action) }
+      onPointerLeave={ () => release(action) }
+      onPointerCancel={ () => release(action) }
     >
       { label }
     </button>
@@ -258,26 +404,66 @@ export default function TetrisPage() {
   return (
     <div className="tetris">
       <div className="tetris__game">
-        <div className="tetris__board">
+        <div className="tetris__side">
+          <div className="tetris__stat tetris__stat--hold">
+            <span className="text-s green-2">Hold</span>
+            <canvas ref={ holdRef }></canvas>
+          </div>
+        </div>
+
+        <div className="tetris__board" ref={ boardWrapRef }>
           <canvas ref={ boardRef }></canvas>
 
-          { hud.status !== "playing" && <div className="tetris__overlay" onClick={ startOrResume }>
+          { hud.status !== "playing" && <div className="tetris__overlay" onClick={ () => canRestart && startOrResume() }>
             { hud.status === "title" && <span className="title-m">Tetris</span> }
             { hud.status === "paused" && <span className="title-s">Paused</span> }
-            { hud.status === "over" && <>
+
+            { hud.status === "over" && ending === "checking" && <>
               <span className="title-s">Game over</span>
               <span className="text-m">Score { hud.score }</span>
             </> }
-            <span className="text-m blink">
+            { hud.status === "over" && ending === "entry" && <>
+              <span className="title-s">New high score!</span>
+              <span className="text-m">{ hud.score }</span>
+              <span className="text-s">Enter your name</span>
+              <NameEntry
+                letters={ letters }
+                cursor={ cursor }
+                touch={ touch }
+                onChange={ (next, index) => { setLetters(next); setCursor(index) } }
+                onSubmit={ saveScore }
+              />
+            </> }
+            { hud.status === "over" && ending === "saving" && <span className="text-m blink">Saving...</span> }
+            { hud.status === "over" && ending === "board" && <>
+              <span className="title-s">Leaderboard</span>
+              { leaderboardStatus === "offline"
+                ? <span className="text-s">Leaderboard offline</span>
+                : <ol className="tetris__scores text-s">
+                  {scores.map((entry, index) => (
+                    <li className={ index + 1 === rank ? "is-new" : "" } key={ `${ entry.name }${ entry.date }${ index }` }>
+                      <span>{ index + 1 }. { entry.name }</span>
+                      <span>{ entry.score }</span>
+                    </li>
+                  ))}
+                  { !scores.length && <li>No scores yet</li> }
+                </ol> }
+              { saveError && <span className="text-s">Not saved: { saveError }</span> }
+              <span className="text-m">Your score { hud.score }</span>
+            </> }
+
+            { canRestart && <span className="text-m blink">
               { touch ? "Tap" : "Press enter" } to { hud.status === "paused" ? "continue" : hud.status === "over" ? "play again" : "start" }
-            </span>
+            </span> }
           </div> }
         </div>
 
         <div className="tetris__hud">
           <div className="tetris__stat tetris__stat--next">
             <span className="text-s green-2">Next</span>
-            <canvas ref={ nextRef }></canvas>
+            {Array.from({ length: QUEUE_SIZE }, (_, i) => (
+              <canvas ref={ (canvas) => { queueRefs.current[i] = canvas } } key={ i }></canvas>
+            ))}
           </div>
           <div className="tetris__stat">
             <span className="text-s green-2">Score</span>
@@ -291,11 +477,23 @@ export default function TetrisPage() {
             <span className="text-s green-2">Level</span>
             <span className="title-s">{ hud.level }</span>
           </div>
+          <button className="tetris__sound text-s" { ...mute.props }>
+            <SpeakerIcon muted={ mute.muted } />
+            { mute.muted ? "Sound off" : "Sound on" }
+          </button>
+          { (hud.status === "playing" || hud.status === "paused") && <button
+            className="tetris__restart text-s"
+            // never keeps the focus: space (hard drop) would press it again and restart the game
+            onPointerDown={ (e) => e.preventDefault() }
+            onClick={ (e) => { e.currentTarget.blur(); restart() } }
+          >
+            Restart
+          </button> }
         </div>
       </div>
 
       { !touch && <div className="tetris__keys text-s green-2">
-        ← → Move · ↑ Rotate · ↓ Soft drop · Space Drop · P Pause
+        ← → Move · ↑ Rotate · ↓ Soft drop · Space Drop · Shift Hold · P Pause · R Restart
       </div> }
 
       { touch && <div className="tetris__controls">
@@ -304,6 +502,7 @@ export default function TetrisPage() {
         { button("down", "↓", "Soft drop") }
         { button("rotate", "↻", "Rotate") }
         { button("drop", "⤓", "Drop") }
+        { button("hold", "H", "Hold") }
       </div> }
     </div>
   )

@@ -11,6 +11,26 @@
 }
 
 
+@font-face {
+	font-family: 'Informix';
+	src: url('../fonts/Informix.otf') format('opentype');
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* paragraphs and long texts read better in Informix and normal case, titles and short labels keep Tickerbit */
+.font-text,
+.intro-desc, .intro-desc-mobile,
+.bitcente-icon__text,
+.sc-detail p,
+.pv__text p,
+.db__content {
+    font-family: Informix, Tickerbit, sans-serif;
+    /* in the case they're written in, not uppercase like the rest of the web */
+    text-transform: none;
+}
+
 html {
     font-size: 0.833vw; /* 16px */
     line-height: 1.2;

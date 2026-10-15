@@ -28,7 +28,7 @@ export const MACHINES: MachineConfig[] = [
     glow: "#a8b987",
     deckOut: .42,
     marqueeOut: .24,
-    top: 1.92,
+    top: 2,
   },
   {
     path: "/",
@@ -50,7 +50,7 @@ export const MACHINES: MachineConfig[] = [
     glow: "#a8b987",
     deckOut: .38,
     marqueeOut: .2,
-    top: 1.86,
+    top: 2,
   },
 ]
 
@@ -60,7 +60,9 @@ export const FOV = 38
 export const SCREEN_HEIGHT = .6
 export const PANEL = .03
 const SCREEN_MARGIN = .06
-const GAP = .3
+// room between the cabinets, and around the row in the room view for the things at the sides
+const GAP = .45
+const ROW_MARGIN = .9
 // the machines at the sides look a bit towards the middle of the room
 const TURN = .2
 
@@ -74,7 +76,10 @@ export const SCREEN_CENTER = new THREE.Vector3(0, (FACE_BOTTOM.y + FACE_TOP.y) /
   .addScaledVector(SCREEN_NORMAL, .004)
 
 // -1 when no machine shows that route
-export const machineFor = (path: string) => MACHINES.findIndex((machine) => machine.path === path)
+// the same path with or without a slash at the end (/tetris and /tetris/)
+export const cleanPath = (path: string) => path.replace(/\/+$/, "") || "/"
+
+export const machineFor = (path: string) => MACHINES.findIndex((machine) => machine.path === cleanPath(path))
 // same, falling back to the machine a visitor lands on
 export const machineOrHome = (path: string) => machineFor(machineFor(path) < 0 ? "/" : path)
 
@@ -108,12 +113,14 @@ export function screenPose(index: number, aspect: number): Pose {
   }
 }
 
+// distance from a screen at which it covers the whole window
+export const FIT_DISTANCE = SCREEN_HEIGHT / 2 / Math.tan(THREE.MathUtils.degToRad(FOV) / 2)
+
 // camera right in front of a screen, at the distance the screen covers the whole window
 export function fitPose(index: number, aspect: number): Pose {
   const { position, quaternion } = screenPose(index, aspect)
-  const distance = SCREEN_HEIGHT / 2 / Math.tan(THREE.MathUtils.degToRad(FOV) / 2)
   return {
-    position: position.add(new THREE.Vector3(0, 0, distance).applyQuaternion(quaternion)),
+    position: position.add(new THREE.Vector3(0, 0, FIT_DISTANCE).applyQuaternion(quaternion)),
     quaternion,
   }
 }
@@ -122,7 +129,7 @@ export function fitPose(index: number, aspect: number): Pose {
 export function roomPose(aspect: number): Pose {
   const tan = Math.tan(THREE.MathUtils.degToRad(FOV) / 2)
   const last = placement(MACHINES.length - 1, aspect)
-  const halfRow = last.x + machineWidth(aspect) / 2 + .35
+  const halfRow = last.x + machineWidth(aspect) / 2 + ROW_MARGIN
   const distance = Math.max(halfRow / (tan * aspect), 1.3 / tan) + .9
 
   const position = new THREE.Vector3(0, 1.5, distance)

@@ -27,6 +27,15 @@
   will-change: transform;
 }
 
+/* the CRT effect of the pages is barely seen on the small screens of the room, only its static layers are kept
+   there (each of the moving ones is a whole window of pixels to redraw on every frame, three times) */
+.arcade.is-out .crt__noise, .arcade.is-out .crt__roll, .arcade.is-out .crt__mask {
+  display: none;
+}
+.arcade.is-out .crt__scanlines {
+  animation: none;
+}
+
 /* the canvas has holes where the screens are, so it goes over them */
 .arcade__room {
   position: fixed;

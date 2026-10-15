@@ -218,7 +218,7 @@ export default function ProjectViewer({ project, onClose }: ProjectViewerProps) 
               </span>
             </div>
 
-            <a
+            { shown.url && <a
               className="pv__visit text-m"
               href={ shown.url }
               target="_blank"
@@ -227,7 +227,7 @@ export default function ProjectViewer({ project, onClose }: ProjectViewerProps) 
               {...pointerEvents}
             >
               Visit project<LinkArrow />
-            </a>
+            </a> }
           </div>
 
           <span className="text-s green-2">&#125;</span>

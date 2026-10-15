@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
 import { SplitText } from "gsap/SplitText";
 import { useBitcenteStore } from '../../store'
-import { useEscapeClaim, usePlaying } from '../../arcade/store';
+import { useArcadeStore, useEscapeClaim, usePlaying } from '../../arcade/store';
 import { Sound } from '../../classes/SoundBoard';
 import { JobMap, projects } from '../../settings';
 import { isMobile as isDeviceMobile } from '../../utils/Screen';
@@ -12,13 +12,15 @@ import Tag from '../../components/Tag';
 import Award from '../../components/Award';
 import Carousel from './Carousel';
 import ProjectDetail from './ProjectDetail';
+import { SpeakerIcon, useMuteButton } from '../../components/MuteButton';
 import './showcase.css'
 gsap.registerPlugin(Draggable,SplitText);
 
 const animationVariables = {
   initialLetterYPos: [-500, -200],
   initialLetterDuration: [1, 1.3],
-  initialLetterScale: [10, 17],
+  // every letter is drawn at this size while it flies in: too big and phones run out of memory and the page crashes
+  initialLetterScale: [10, 6],
   bounceLetterYPos: [-50, -20],
 }
 
@@ -75,7 +77,16 @@ function ShowcasePage() {
   playingRef.current = playing
   // ESC closes the project before it leaves the arcade machine
   useEscapeClaim(playing && isOpen)
+  // nobody sees this page while another machine is being played, the carousel can rest
+  const settled = useArcadeStore((state) => state.settled)
+  useEffect(() => {
+    carousel.current?.setSuspended(!playing && settled)
+    // when it isn't the machine being played it's only seen small, in the room
+    carousel.current?.setResolution(playing ? 1 : .5)
+  }, [playing, settled])
   const shownProject = projects[openedProject ?? hoveredProject ?? activeProject]
+
+  const mute = useMuteButton()
 
   const pointerEvents = {
     onPointerEnter: () => setCursorPointer(true),
@@ -303,8 +314,9 @@ function ShowcasePage() {
         }
       })
 
-      gsap.to(letter, {
-        filter: "brightness(1)",
+      // the lit letter fades in over the dark one (a css filter instead is redrawn on every frame and phones choke on it)
+      gsap.to(letter.querySelector(".logo__lit"), {
+        opacity: 1,
         ease: "power3.out",
         duration: .8,
         delay: 3.6 + stagger * .3,
@@ -347,7 +359,7 @@ function ShowcasePage() {
     })
   }, [started])
 
-  const hoverLetter = (e: React.PointerEvent<HTMLImageElement>) => {
+  const hoverLetter = (e: React.PointerEvent<HTMLElement>) => {
     if (!canMove) return;
     gsap.to(e.currentTarget, {
       y: -20,
@@ -356,7 +368,7 @@ function ShowcasePage() {
     })
     playSound(letterSounds[e.currentTarget.dataset.letter!])
   }
-  const blurLetter = (e: React.PointerEvent<HTMLImageElement>) => {
+  const blurLetter = (e: React.PointerEvent<HTMLElement>) => {
     if (!canMove) return;
     gsap.to(e.currentTarget, {
       y: 0,
@@ -452,7 +464,9 @@ function ShowcasePage() {
             <a
               href={ url }
               className="social"
-              target="_blank"
+              // only web pages in a new tab: mailto: and tel: are handed to the mail and phone apps, a new tab
+              // would just be left open with the address in it
+              { ...(url.startsWith("http") && { target: "_blank", rel: "noreferrer" }) }
               onClick={() => playSound(Sound.OpenLink)}
               draggable="false"
               key={ name }
@@ -464,6 +478,9 @@ function ShowcasePage() {
           <div className={"social " + (draggingPizza ? 'dragging' : '')} {...pointerEvents}>
             <img src="svg/pizza.svg" alt="Pizza Icon" id="pizza" {...pointerEvents} />
           </div>
+          <button className="social social--sound" { ...mute.props }>
+            <SpeakerIcon muted={ mute.muted } padded />
+          </button>
         </div>
 
         <div
@@ -474,7 +491,10 @@ function ShowcasePage() {
         >
           <div className="logo">
             {logoLetters.map((letter, i) => (
-              <img className="logo__letter" src={ "svg/logo/" + letter + ".svg" } draggable="false" onPointerEnter={hoverLetter} onPointerOut={blurLetter} data-letter={letter} key={ letter + i } />
+              <span className="logo__letter" onPointerEnter={hoverLetter} onPointerOut={blurLetter} data-letter={letter} key={ letter + i }>
+                <img src={ "svg/logo/dark/" + letter + ".svg" } alt="" draggable="false" />
+                <img className="logo__lit" src={ "svg/logo/" + letter + ".svg" } alt="" draggable="false" />
+              </span>
             ))}
           </div>
           <div className="bottom-desc text-base text-align-center"><div>Creative Front-end<br/> Developer ©{new Date().getFullYear()}</div></div>
@@ -491,9 +511,6 @@ function ShowcasePage() {
 
         <div className="sc-hud">
           <div className="sc-hud__project">
-            <span className="text-s green-2">
-              { String(projects.indexOf(shownProject) + 1).padStart(2, "0") }/{ String(projects.length).padStart(2, "0") }
-            </span>
             <h2 className="title-s" key={ shownProject.name }>{ shownProject.name }{ shownProject.awarded && <Award ishovered={true} /> }</h2>
           </div>
           { !isMobile && <div className="sc-hud__tags">

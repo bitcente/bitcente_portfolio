@@ -480,14 +480,14 @@ function HomePage() {
             onPointerOut={() => setCursorPointer(false)}>
             <img src="svg/github.svg" alt="Github Icon" draggable="false"/>
           </a>
-          <a href="mailto:hi@bitcente.com" target="_blank"
+          <a href="mailto:hi@bitcente.com"
             className="social"
             onClick={() => playSound(Sound.OpenLink)}
             onPointerEnter={() => {setCursorPointer(true);}}
             onPointerOut={() => setCursorPointer(false)}>
             <img src="svg/mail.svg" alt="Email Icon" draggable="false" />
           </a>
-          <a href="tel:+34601407676" target="_blank"
+          <a href="tel:+34601407676"
             className="social"
             onClick={() => playSound(Sound.OpenLink)}
             onPointerEnter={() => {setCursorPointer(true);}}

@@ -25,3 +25,6 @@ dist-ssr
 
 # holds the private GSAP registry token
 .npmrc
+
+# token of the tetris leaderboard database (see server/leaderboard-config.example.php)
+leaderboard-config.php

@@ -1,16 +1,14 @@
-import { MutableRefObject, useEffect, useMemo, useRef } from "react"
+import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { PerformanceMonitor } from "@react-three/drei"
 import { gsap } from "gsap"
 import Machine from "./Machine"
+import Room from "./Room"
 import {
   fitPose, FOV, MACHINES, machineWidth, placement, Pose, rectToQuad, roomPose, SCREEN_HEIGHT, screenPose, screenWidth,
 } from "./layout"
 import { useArcadeStore } from "./store"
-
-const BACKGROUND = "#040308"
-const WALL_Z = -.62
-const CEILING = 3.3
 
 // dom elements shown through the screens, one per machine with its page inside
 export type ArcadeScreens = (HTMLDivElement | null)[]
@@ -19,130 +17,6 @@ interface ArcadeRoomProps {
   screens: MutableRefObject<ArcadeScreens>
   onSelect: (machine: number) => void
   onHover: (hovered: boolean) => void
-}
-
-// worn out carpet with the confetti every arcade had
-function carpetTexture() {
-  const canvas = document.createElement("canvas")
-  canvas.width = canvas.height = 256
-  const ctx = canvas.getContext("2d")!
-  ctx.fillStyle = "#0d0b18"
-  ctx.fillRect(0, 0, 256, 256)
-
-  const colors = ["#ff3fa4", "#33e1ff", "#ffe14d", "#7dff6a", "#9b6bff"]
-  for (let i = 0; i < 70; i++) {
-    ctx.save()
-    ctx.translate(Math.random() * 256, Math.random() * 256)
-    ctx.rotate(Math.random() * Math.PI)
-    ctx.globalAlpha = .35 + Math.random() * .3
-    ctx.fillStyle = ctx.strokeStyle = colors[i % colors.length]
-    ctx.lineWidth = 3
-    if (i % 3 === 0) {
-      ctx.fillRect(-7, -2, 14, 4)
-    } else if (i % 3 === 1) {
-      ctx.beginPath()
-      ctx.moveTo(-8, 4)
-      ctx.lineTo(-3, -4)
-      ctx.lineTo(3, 4)
-      ctx.lineTo(8, -4)
-      ctx.stroke()
-    } else {
-      ctx.beginPath()
-      ctx.arc(0, 0, 4, 0, Math.PI * 1.5)
-      ctx.stroke()
-    }
-    ctx.restore()
-  }
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(24, 24)
-  texture.anisotropy = 8
-  return texture
-}
-
-function neonTexture() {
-  const canvas = document.createElement("canvas")
-  canvas.width = 1024
-  canvas.height = 256
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-
-  const paint = () => {
-    const ctx = canvas.getContext("2d")!
-    ctx.clearRect(0, 0, 1024, 256)
-    ctx.font = "170px Tickerbit, monospace"
-    ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    ctx.shadowColor = "#ff2f8e"
-    ctx.shadowBlur = 40
-    ctx.fillStyle = "#ff2f8e"
-    ctx.fillText("ARCADE", 512, 140)
-    // hot core of the tube
-    ctx.shadowBlur = 8
-    ctx.fillStyle = "#ffd3e8"
-    ctx.fillText("ARCADE", 512, 140)
-    texture.needsUpdate = true
-  }
-  paint()
-  document.fonts.load("64px Tickerbit").then(paint).catch(() => {})
-  return texture
-}
-
-function Room() {
-  const carpet = useMemo(carpetTexture, [])
-  const neon = useMemo(neonTexture, [])
-  const neonLight = useRef<THREE.PointLight>(null)
-  const neonSign = useRef<THREE.MeshBasicMaterial>(null)
-
-  useEffect(() => () => {
-    carpet.dispose()
-    neon.dispose()
-  }, [])
-
-  // the sign buzzes and drops out every now and then
-  useFrame(({ clock }) => {
-    const time = clock.elapsedTime
-    const dropout = Math.sin(time * 1.7) > .985 || Math.sin(time * 23) * Math.sin(time * .9) > .93
-    const level = dropout ? .35 : .92 + Math.sin(time * 60) * .04
-    if (neonLight.current) neonLight.current.intensity = 5 * level
-    if (neonSign.current) neonSign.current.color.setScalar(level)
-  })
-
-  return (
-    <>
-      <color attach="background" args={ [BACKGROUND] } />
-      <fogExp2 attach="fog" args={ [BACKGROUND, .045] } />
-      <ambientLight intensity={ .3 } color="#8a86c8" />
-      {/* tired ceiling lamp, somewhere behind the player */}
-      <pointLight position={ [0, CEILING - .3, 3.2] } color="#ffcf9a" intensity={ 11 } distance={ 14 } decay={ 2 } />
-
-      <mesh rotation-x={ -Math.PI / 2 } position={ [0, 0, 8] }>
-        <planeGeometry args={ [48, 48] } />
-        <meshStandardMaterial map={ carpet } roughness={ 1 } />
-      </mesh>
-      <mesh position={ [0, CEILING / 2, WALL_Z] }>
-        <planeGeometry args={ [48, CEILING] } />
-        <meshStandardMaterial color="#3a3350" roughness={ .95 } />
-      </mesh>
-      <mesh rotation-x={ Math.PI / 2 } position={ [0, CEILING, 8] }>
-        <planeGeometry args={ [48, 48] } />
-        <meshStandardMaterial color="#0c0b10" roughness={ 1 } />
-      </mesh>
-      {/* skirting board */}
-      <mesh position={ [0, .06, WALL_Z + .012] }>
-        <boxGeometry args={ [48, .12, .02] } />
-        <meshStandardMaterial color="#08070c" roughness={ .6 } />
-      </mesh>
-
-      <mesh position={ [0, 2.68, WALL_Z + .03] }>
-        <planeGeometry args={ [2.2, .55] } />
-        <meshBasicMaterial ref={ neonSign } map={ neon } transparent toneMapped={ false } fog={ false } />
-      </mesh>
-      <pointLight ref={ neonLight } position={ [0, 2.68, WALL_Z + .5] } color="#ff2f8e" intensity={ 5 } distance={ 11 } decay={ 2 } />
-    </>
-  )
 }
 
 // moves the camera between the room and the screens, and keeps the dom screens glued to their machines
@@ -261,24 +135,150 @@ function Rig({ screens }: { screens: MutableRefObject<ArcadeScreens> }) {
   return null
 }
 
+// The room doesn't move, so the shadows and the reflections are made once, and again only when the machines
+// are moved around for another shape of window
+function useStaticLighting(aspect: number) {
+  const { gl, scene } = useThree()
+  const pending = useRef(0)
+
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    // a couple of frames later, once everything is in place
+    pending.current = 3
+  }, [aspect])
+
+  useFrame(() => {
+    if (!pending.current || --pending.current) return
+
+    // the screens are seen as glowing panels instead of holes from where the reflections are taken
+    const hidden: THREE.Object3D[] = []
+    scene.traverse((object) => {
+      if (object.userData.screenHole && object.visible) {
+        object.visible = false
+        hidden.push(object)
+      }
+      if (object.userData.screenGlow) object.visible = true
+    })
+
+    const generator = new THREE.PMREMGenerator(gl)
+    const target = generator.fromScene(scene, .02, .1, 40, { size: 128, position: new THREE.Vector3(0, 1.3, 1.6) })
+    generator.dispose()
+
+    hidden.forEach((object) => { object.visible = true })
+    scene.traverse((object) => { if (object.userData.screenGlow) object.visible = false })
+
+    // only shiny things get the reflections: on the rest they would hardly show and they cost a lot on every pixel
+    const shiny = new Set<THREE.MeshStandardMaterial>()
+    scene.traverse((object) => {
+      const { material } = object as THREE.Mesh
+      ;(Array.isArray(material) ? material : [material]).forEach((item) => {
+        if (item instanceof THREE.MeshStandardMaterial && (item.metalness >= .6 || item.roughness <= .25)) shiny.add(item)
+      })
+    })
+    shiny.forEach((material) => {
+      const previous = material.envMap
+      material.envMap = target.texture
+      material.needsUpdate = true
+      if (previous && previous !== target.texture) previous.dispose()
+    })
+  })
+}
+
+// Work done while a machine is being played and nobody sees the canvas, long before the player presses ESC.
+// Done when the player first steps out instead, it freezes the page for a moment right as the camera starts to fly.
+// It's split in small pieces, each one when the browser is idle, so the page being played doesn't stutter either:
+// - the shaders of every object, one object at a time (in parallel and without blocking where the browser can)
+// - a few frames, which make the shadows and the reflections (those change the shaders of the shiny materials,
+//   so they're compiled again)
+// - a frame seen from the room, so the textures of everything are on the GPU too (from the screen, almost nothing
+//   is in sight and they would wait until the first frame out)
+const WARM_UP_FRAMES = 3
+const WARM_UP_EVERY = 60
+
+function useWarmUp() {
+  const { advance, gl, scene, camera } = useThree()
+
+  useEffect(() => {
+    let cancelled = false
+    const idle = () => new Promise<void>((resolve) => {
+      window.setTimeout(() => {
+        if ("requestIdleCallback" in window) window.requestIdleCallback(() => resolve(), { timeout: 2000 })
+        else resolve()
+      }, WARM_UP_EVERY)
+    })
+    // stops if the player is already out in the room, the frames are being drawn anyway
+    const go = async () => {
+      await idle()
+      return !cancelled && useArcadeStore.getState().settled
+    }
+
+    // as many objects as fit in each moment the browser is idle
+    const nextIdle = () => new Promise<IdleDeadline | null>((resolve) => {
+      // (Safari has no requestIdleCallback)
+      if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(resolve, { timeout: 1000 })
+      else setTimeout(() => resolve(null), WARM_UP_EVERY)
+    })
+    const compileAll = async () => {
+      const objects: THREE.Object3D[] = []
+      scene.traverseVisible((object) => {
+        if ((object as THREE.Mesh).isMesh || (object as THREE.Points).isPoints) objects.push(object)
+      })
+      while (objects.length) {
+        const deadline = await nextIdle()
+        if (cancelled || !useArcadeStore.getState().settled) return false
+        const pending: Promise<unknown>[] = []
+        do {
+          // with the lights of the whole room
+          pending.push(gl.compileAsync(objects.shift()!, camera, scene))
+        } while (objects.length && deadline && deadline.timeRemaining() > 6)
+        await Promise.all(pending)
+      }
+      return true
+    }
+
+    const run = async () => {
+      if (!await compileAll()) return
+      for (let frame = 0; frame < WARM_UP_FRAMES; frame++) {
+        if (!await go()) return
+        advance(performance.now())
+      }
+      if (!await compileAll()) return
+
+      if (!await go()) return
+      const position = camera.position.clone()
+      const quaternion = camera.quaternion.clone()
+      const room = roomPose(window.innerWidth / window.innerHeight)
+      camera.position.copy(room.position)
+      camera.quaternion.copy(room.quaternion)
+      camera.updateMatrixWorld()
+      advance(performance.now())
+      camera.position.copy(position)
+      camera.quaternion.copy(quaternion)
+      camera.updateMatrixWorld()
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
+}
+
 function Scene({ screens, onSelect, onHover }: ArcadeRoomProps) {
-  const { gl, scene, camera, size } = useThree()
+  const size = useThree((state) => state.size)
   const aspect = size.width / size.height
 
-  // so the first frame of the first flight doesn't have to wait for the shaders
-  useEffect(() => {
-    gl.compile(scene, camera)
-  }, [])
+  useStaticLighting(aspect)
+  useWarmUp()
 
   return (
     <>
       <Rig screens={ screens } />
-      <Room />
+      <Room aspect={ aspect } />
       {MACHINES.map((config, index) => {
         const { x, z, rotation } = placement(index, aspect)
         return (
           <Machine
             config={ config }
+            index={ index }
             width={ machineWidth(aspect) }
             screenWidth={ screenWidth(aspect) }
             position={ [x, 0, z] }
@@ -293,16 +293,35 @@ function Scene({ screens, onSelect, onHover }: ArcadeRoomProps) {
   )
 }
 
+// pixel ratio of the canvas: starts at what the screen has (up to MAX_DPR) and goes down to MIN_DPR, in steps,
+// while the frame rate is too low
+const MAX_DPR = 1.5
+const MIN_DPR = .75
+const DPR_STEP = .25
+
 export default function ArcadeRoom(props: ArcadeRoomProps) {
   const settled = useArcadeStore((state) => state.settled)
+  const best = Math.max(MIN_DPR, Math.min(window.devicePixelRatio, MAX_DPR))
+  const [dpr, setDpr] = useState(best)
 
   return (
     <Canvas
       frameloop={ settled ? "never" : "always" }
-      dpr={ [1, 2] }
-      gl={ { alpha: true, antialias: true } }
+      dpr={ dpr }
+      shadows="soft"
+      // screens with many pixels are smooth enough without multisampling, which is expensive there
+      gl={ { alpha: true, antialias: window.devicePixelRatio < 1.5 } }
       camera={ { fov: FOV, near: .05, far: 80 } }
     >
+      <PerformanceMonitor
+        factor={ 1 }
+        flipflops={ 3 }
+        onChange={ ({ factor }) => {
+          const next = Math.round((MIN_DPR + (best - MIN_DPR) * factor) / DPR_STEP) * DPR_STEP
+          setDpr(Math.max(MIN_DPR, Math.min(best, next)))
+        } }
+        onFallback={ () => setDpr(MIN_DPR) }
+      />
       <Scene { ...props } />
     </Canvas>
   )

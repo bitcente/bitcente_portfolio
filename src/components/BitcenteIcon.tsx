@@ -4,7 +4,7 @@ import TypeWriter from "./TypeWriter";
 import PixelStars from "./PixelStars";
 import { Sound } from "../classes/SoundBoard";
 import { isMobile } from "../utils/Screen";
-import { MachineContext } from "../arcade/store";
+import { MachineContext, ROOM_ENABLED } from "../arcade/store";
 
 export enum BitcenteIconState {
     IDLE = "bitcente_idle.gif",
@@ -121,7 +121,7 @@ const textsToSpeakMobile: SpeakTextGroup[] = [
 ]
 
 // pizza from which Bitcente tells his secret every time he eats
-const FEEDS_FOR_SECRET = 2
+const FEEDS_FOR_SECRET = 1
 // ms after the eating sound that the secret jingle plays, the first time he tells it
 const SECRET_SOUND_DELAY = 150
 
@@ -160,8 +160,8 @@ export default function BitcenteIcon({
     const [waitingForInput, setWaitingForInput] = useState(false);
     const [speakingTexts, setSpeakingTexts] = useState<SpeakTextGroup | null>(null);
 
-    // the secret is about the arcade room, so only when he's in one of its machines
-    const inArcade = useContext(MachineContext) >= 0;
+    // the secret is about the arcade room, so only when he's in one of its machines (and there's a room: not on mobile)
+    const inArcade = useContext(MachineContext) >= 0 && ROOM_ENABLED;
     const feeds = useRef(0);
     const secretSound = useRef<number>();
 

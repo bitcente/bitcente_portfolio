@@ -69,6 +69,9 @@ const SCREEN_CURVE = -600
 const CURVE_ON_SCROLL_MULTIPLIER = 1.2
 // curve on mobile relative to the one on desktop (moving or not): 0 is flat, 2 twice as curved...
 const MOBILE_CURVE_MULTIPLIER = .2
+// highest pixel ratio the carousel is drawn at: phones have little memory and the canvas covers the whole window
+const MAX_PIXEL_RATIO = 2
+const MOBILE_MAX_PIXEL_RATIO = 1.5
 
 // horizontal strips each plane is cut into, every strip bends as a rigid block
 const BEND_STRIPS = 14
@@ -186,6 +189,11 @@ export default class Carousel {
 
   private frame = 0
   private lastTime = 0
+  // videos are wanted (the carousel is shown), but only the ones on screen play: the rest would be decoded for nothing
+  private videosOn = false
+  private videoCheck = 0
+  // part of the pixel ratio of the screen the carousel is drawn at
+  private resolution = 1
   private snapTimer = 0
   private stopTimer = 0
   private resizeObserver: ResizeObserver
@@ -234,11 +242,12 @@ export default class Carousel {
       video.muted = true
       video.loop = true
       video.playsInline = true
-      video.preload = "auto"
+      // phones only load a video once it plays (on screen): all of them at once is too much memory for them
+      video.preload = isMobile() ? "metadata" : "auto"
       video.src = videoSrc
       video.addEventListener("loadeddata", () => {
         replace(new THREE.VideoTexture(video), video.videoWidth, video.videoHeight)
-        if (this.visible && !this.locked) video.play().catch(() => {})
+        this.syncVideos()
       }, { once: true })
       media.video = video
     } else if (image) {
@@ -326,11 +335,25 @@ export default class Carousel {
   }
 
   private playVideos(play: boolean) {
-    this.media.forEach(({ video }) => {
+    this.videosOn = play
+    this.syncVideos()
+  }
+
+  private syncVideos() {
+    const reach = this.width / 2 + this.planeWidth
+    this.media.forEach(({ video }, item) => {
       if (!video) return
-      if (play) video.play().catch(() => {})
-      else video.pause()
+      const onScreen = this.videosOn && this.planes.some((plane) => plane.item === item && Math.abs(plane.x) < reach)
+      if (onScreen && video.paused) video.play().catch(() => {})
+      if (!onScreen && !video.paused) video.pause()
     })
+  }
+
+  // drawn at a lower resolution while the page is small (in a screen of the arcade room)
+  setResolution(resolution: number) {
+    if (resolution === this.resolution) return
+    this.resolution = resolution
+    this.resize()
   }
 
   /* LAYOUT */
@@ -379,7 +402,7 @@ export default class Carousel {
     this.camera.position.y = top + height / 2 - viewHeight / 2
     this.camera.updateProjectionMatrix()
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? MOBILE_MAX_PIXEL_RATIO : MAX_PIXEL_RATIO) * this.resolution)
     this.renderer.setSize(width, viewHeight)
     this.renderer.domElement.style.top = `${-top}px`
   }
@@ -446,6 +469,20 @@ export default class Carousel {
     this.frame = 0
   }
 
+  // the page is out of sight (another arcade machine is being played): no frames and no videos until it's back
+  private suspended = false
+  setSuspended(suspended: boolean) {
+    if (suspended === this.suspended) return
+    this.suspended = suspended
+    if (suspended) {
+      this.stop()
+      this.playVideos(false)
+    } else if (this.visible && !this.locked) {
+      this.start()
+      this.playVideos(true)
+    }
+  }
+
   private tick = (time: number) => {
     this.frame = requestAnimationFrame(this.tick)
     const delta = Math.min((time - this.lastTime) / 1000, .05)
@@ -470,6 +507,13 @@ export default class Carousel {
     scroll.current += (scroll.target - scroll.current) * (1 - Math.exp(-delta * SCROLL_EASE))
     const velocity = THREE.MathUtils.clamp((scroll.current - previous) / delta / MAX_SPEED, -1.5, 1.5)
     this.uniforms.uVelocity.value += (velocity - this.uniforms.uVelocity.value) * (1 - Math.exp(-delta * 10))
+
+    // which videos are on screen changes as it scrolls
+    this.videoCheck += delta
+    if (this.videoCheck > .25) {
+      this.videoCheck = 0
+      this.syncVideos()
+    }
     const speed = Math.min(Math.abs(this.uniforms.uVelocity.value), 1)
     this.uniforms.uCurve.value = (CURVED_SCREEN ? this.screenCurve : 0) + this.screenCurve * CURVE_ON_SCROLL_MULTIPLIER * speed
 

@@ -18,7 +18,7 @@ import type { GameMap } from "../types";
 export const MAP_LIST: GameMap[] = [
   {
     id: "sprout_town",
-    name: "SPROUT TOWN",
+    name: "PALLET TOWN",
     rows: [
       "TTTTTTTTTppTTTTTTTTT",
       "T........pp........T",
@@ -145,7 +145,7 @@ export const MAP_LIST: GameMap[] = [
   },
   {
     id: "pebble_town",
-    name: "PEBBLE TOWN",
+    name: "VIRIDIAN CITY",
     rows: [
       "TTTTTTTTTTTTTTTTTTTTTT",
       "T........pp..........T",
@@ -285,7 +285,7 @@ export const MAP_LIST: GameMap[] = [
   },
   {
     id: "iron_city",
-    name: "IRON CITY",
+    name: "PEWTER CITY",
     rows: [
       "TTTTTTTTTTTTTTTTTTTTTTTTTT",
       "T........................T",
@@ -323,7 +323,7 @@ export const MAP_LIST: GameMap[] = [
         y: 8,
         dir: "down",
         lines: [
-          "The IRON GYM leader uses ROCK and STEEL creatures.",
+          "The PEWTER GYM leader uses ROCK and STEEL creatures.",
           "GROUND and WATER attacks hit them very hard!",
           "A wild NUTTER in the forest knows a GROUND move.",
         ],
@@ -332,7 +332,7 @@ export const MAP_LIST: GameMap[] = [
   },
   {
     id: "iron_gym",
-    name: "IRON GYM",
+    name: "PEWTER GYM",
     rows: [
       "wwwwwwwwwwww",
       "wiiiiiiiiiiw",
@@ -362,7 +362,7 @@ export const MAP_LIST: GameMap[] = [
         speciesId: "granitor",
         level: 9, // you need about LV. 11 to beat it
         trigger: [{ x: 4, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 4, y: 5 }, { x: 5, y: 5 }, { x: 6, y: 5 }],
-        intro: ["I'm FERRO, leader of the IRON GYM!", "Show me the strength of your team!"],
+        intro: ["I'm FERRO, leader of the PEWTER GYM!", "Show me the strength of your team!"],
         win: ["Impressive! Your bond with your creature is strong."],
         badge: "IRON BADGE",
       },

@@ -1,15 +1,18 @@
 import { useEffect, useMemo } from "react";
 import { useBitcenteStore } from "../store";
-import { Sound, SoundBoardClass } from "../classes/SoundBoard";
+import { Sound, soundBoard } from "../classes/SoundBoard";
 import { isMobile } from "../utils/Screen";
 
 export default function SoundBoard() {
     const soundPlayed = useBitcenteStore((state) => state.soundPlayed);
     const playSound = useBitcenteStore((state) => state.playSound);
 
-    const SoundBoardElement = useMemo(() => {
-        return new SoundBoardClass();
-    }, [])
+    const SoundBoardElement = useMemo(() => soundBoard(), [])
+    const muted = useBitcenteStore((state) => state.muted);
+
+    useEffect(() => {
+        SoundBoardElement.setMuted(muted);
+    }, [muted])
 
     useEffect(() => {
         if (!soundPlayed) return;

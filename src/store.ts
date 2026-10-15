@@ -6,7 +6,23 @@ export enum ScreenViewType {
     CONTENT
 }
 
+// remembered in this browser between visits (may be unavailable: private mode, blocked storage)
+const MUTED_KEY = "muted"
+const readMuted = () => {
+    try {
+        return localStorage.getItem(MUTED_KEY) === "1"
+    } catch {
+        return false
+    }
+}
+
 interface ExperienceState {
+    // every sound and song of the web silenced
+    muted: boolean
+    toggleMuted: () => void
+    // how many things are taking typed letters right now (the M key isn't for muting then)
+    typingClaims: number
+    claimTyping: (amount: number) => void
     screenView: ScreenViewType
     goToStart: () => void
     goToContent: () => void
@@ -30,6 +46,17 @@ export const useBitcenteStore = create<ExperienceState>()((set) => ({
     playSound: (sound) => set(() => ({ soundPlayed: sound })),
     bitcenteEating: false,
     setBitcenteEating: (eating) => set(() => ({ bitcenteEating: eating })),
+    muted: readMuted(),
+    toggleMuted: () => set((state) => {
+        try {
+            localStorage.setItem(MUTED_KEY, state.muted ? "0" : "1")
+        } catch {
+            /* storage unavailable */
+        }
+        return { muted: !state.muted }
+    }),
+    typingClaims: 0,
+    claimTyping: (amount) => set((state) => ({ typingClaims: state.typingClaims + amount })),
     continueDialog: false,
     setContinueDialog: (continueDialog) => set(() => ({ continueDialog: continueDialog })),
 }))

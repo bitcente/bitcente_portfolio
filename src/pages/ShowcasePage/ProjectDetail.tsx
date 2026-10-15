@@ -9,6 +9,8 @@ import { isMobile } from "../../utils/Screen"
 import Tag from "../../components/Tag"
 import Award from "../../components/Award"
 import LinkArrow from "../../components/LinkArrow"
+import { useCrtExclusion } from "../../components/CrtOverlay"
+import MediaZoom, { ZoomedMedia } from "./MediaZoom"
 
 gsap.registerPlugin(SplitText)
 
@@ -30,6 +32,27 @@ const blockNoise = (x: number, y: number) => {
   return value - Math.floor(value)
 }
 
+// rows of the pixel art cross of the close button, # is a pixel
+const CROSS = [
+  "##....##",
+  "###..###",
+  ".######.",
+  "..####..",
+  "..####..",
+  ".######.",
+  "###..###",
+  "##....##",
+]
+
+function PixelX() {
+  const path = CROSS.flatMap((row, y) => [...row].map((pixel, x) => pixel === "#" ? `M${x} ${y}h1v1h-1z` : "")).join("")
+  return (
+    <svg className="sc-detail__cross" viewBox={ `0 0 ${CROSS[0].length} ${CROSS.length}` } shapeRendering="crispEdges" aria-hidden="true">
+      <path d={ path } fill="currentColor" />
+    </svg>
+  )
+}
+
 interface ProjectDetailProps {
   project?: ProjectType
   onClose: () => void
@@ -40,10 +63,29 @@ function Video({ src }: { src: string }) {
   return <video src={ src } muted loop autoPlay playsInline disablePictureInPicture />
 }
 
-// image or video with the canvas used to pixelate it over
-function Media({ video, image, alt }: { video?: string, image?: string, alt?: string }) {
+interface MediaProps {
+  video?: string
+  image?: string
+  alt?: string
+  onZoom: (media: ZoomedMedia) => void
+}
+
+// image or video with the canvas used to pixelate it over, seen clean without the CRT effect. Clicking it shows it in big
+function Media({ video, image, alt, onZoom }: MediaProps) {
+  const setCursorPointer = useBitcenteStore((state) => state.setCursorPointer)
+  const ref = useRef<HTMLDivElement>(null)
+  useCrtExclusion(ref)
   return (
-    <div className="sc-detail__media sc-detail__reveal">
+    <div
+      className="sc-detail__media sc-detail__reveal"
+      ref={ ref }
+      onClick={ (e) => {
+        setCursorPointer(false)
+        onZoom({ video, image, alt, from: e.currentTarget })
+      } }
+      onPointerEnter={ () => setCursorPointer(true) }
+      onPointerLeave={ () => setCursorPointer(false) }
+    >
       { video
         ? <Video src={ video } />
         : <img src={ image } alt={ alt } draggable="false" /> }
@@ -146,6 +188,8 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
 
   const isOpen = !!project
   const shown = project ?? content
+  // image or video shown in big
+  const [zoomed, setZoomed] = useState<ZoomedMedia | null>(null)
 
   const pointerEvents = {
     onPointerEnter: () => setCursorPointer(true),
@@ -171,6 +215,7 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
   useLayoutEffect(() => {
     const root = rootRef.current
     if (!root) return
+    setZoomed(null)
     stopRevealRef.current?.()
     stopRevealRef.current = undefined
     gsap.killTweensOf(root)
@@ -239,7 +284,7 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
     >
       { shown && <>
         <button className="sc-detail__close pv__close text-s" onClick={ close } aria-label="Close project" {...pointerEvents}>
-          X
+          <PixelX />
         </button>
 
         { !isMobile() && <div className="sc-detail__progress" ref={ progressRef } aria-hidden="true">
@@ -261,7 +306,7 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
               </div>
               <div className="sc-detail__summary sc-detail__reveal">
                 <p className="text-m sc-detail__type">{ formatText(shown.description) }</p>
-                <a
+                { shown.url && <a
                   className="pv__visit text-m sc-detail__fade"
                   href={ shown.url }
                   target="_blank"
@@ -270,15 +315,17 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
                   {...pointerEvents}
                 >
                   Visit project<LinkArrow />
-                </a>
+                </a> }
               </div>
             </header>
 
-            { shown.video && <Media video={ shown.video } /> }
+            { shown.video && <Media video={ shown.video } onZoom={ setZoomed } /> }
 
-            {shown.slides?.filter(({ cover }) => !cover).map(({ title, text, image, video }, i) => {
+            {shown.slides?.filter(({ cover }) => !cover).map(({ title, text, image, video }, i, slides) => {
               const hasMedia = !!(image || video)
               const hasText = !!(title || text)
+              // only the sections with a title are numbered, images and videos on their own don't count
+              const number = slides.slice(0, i + 1).filter((slide) => slide.title).length
               return (
                 <section
                   className={ "sc-detail__section " + (hasMedia && hasText ? 'has-both' : '') }
@@ -286,18 +333,18 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
                 >
                   { hasText && <div className="sc-detail__text sc-detail__reveal">
                     { title && <h3 className="title-s sc-detail__type">
-                      <span className="green-3">{ String(i + 1).padStart(2, "0") }.</span> { title }
+                      <span className="green-2">{ String(number).padStart(2, "0") }.</span> { title }
                     </h3> }
                     { text && <p className="text-m sc-detail__type">{ formatText(text) }</p> }
                   </div> }
-                  { hasMedia && <Media video={ video } image={ image } alt={ shown.name + (title ? " - " + title : "") } /> }
+                  { hasMedia && <Media video={ video } image={ image } alt={ shown.name + (title ? " - " + title : "") } onZoom={ setZoomed } /> }
                 </section>
               )
             })}
 
             <footer className="sc-detail__footer sc-detail__reveal">
               <span className="text-s green-2 sc-detail__fade">&#125;</span>
-              <a
+              { shown.url && <a
                 className="pv__visit text-m sc-detail__fade"
                 href={ shown.url }
                 target="_blank"
@@ -306,12 +353,14 @@ export default function ProjectDetail({ project, onClose }: ProjectDetailProps) 
                 {...pointerEvents}
               >
                 Visit project<LinkArrow />
-              </a>
+              </a> }
             </footer>
 
           </div>
         </div>
       </> }
+
+      { zoomed && <MediaZoom media={ zoomed } onClose={ () => setZoomed(null) } /> }
     </div>
   )
 }

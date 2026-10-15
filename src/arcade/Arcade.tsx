@@ -5,9 +5,10 @@ import ShowcasePage from "../pages/ShowcasePage/ShowcasePage"
 import TetrisPage from "../pages/TetrisPage/TetrisPage"
 import { useBitcenteStore } from "../store"
 import { isTouchDevice } from "../utils/Screen"
+import { useLeaderboard } from "../leaderboard"
 import type { ArcadeScreens } from "./ArcadeRoom"
-import { machineFor, MACHINES } from "./layout"
-import { MachineContext, useArcadeStore } from "./store"
+import { cleanPath, machineFor, MACHINES } from "./layout"
+import { MachineContext, ROOM_ENABLED, useArcadeStore } from "./store"
 import "./arcade.css"
 
 // three.js room, only needed once the player steps back from the machine
@@ -20,8 +21,8 @@ const PAGES: Record<string, ComponentType> = {
   "/pokemon": PokemonPage,
 }
 
-// ms after the page loads to get the room ready in the background
-const PRELOAD_DELAY = 2500
+// ms after the page loads to get the room ready in the background, once the intro animations of the pages are over
+const PRELOAD_DELAY = 6000
 // input the pages behind the glass must not get while the player is in the room
 const BLOCKED_EVENTS = ["keydown", "keyup", "wheel", "touchstart", "touchmove", "touchend"] as const
 // clicks on the room must not reach the listeners the pages have on the window
@@ -41,7 +42,7 @@ export default function Arcade() {
 
   const select = (index: number) => {
     setCursorPointer(false)
-    if (window.location.pathname !== MACHINES[index].path) window.history.pushState(null, "", MACHINES[index].path)
+    if (cleanPath(window.location.pathname) !== MACHINES[index].path) window.history.pushState(null, "", MACHINES[index].path)
     useArcadeStore.getState().enter(index)
   }
 
@@ -58,22 +59,30 @@ export default function Arcade() {
   }, [])
 
   useEffect(() => {
+    if (!ROOM_ENABLED) return
     const timeout = window.setTimeout(() => setRoomMounted(true), PRELOAD_DELAY)
     return () => clearTimeout(timeout)
   }, [])
 
   useEffect(() => {
+    if (!ROOM_ENABLED) return
+    const leave = (e: Event) => {
+      e.stopPropagation()
+      e.preventDefault()
+      setCursorPointer(false)
+      setRoomMounted(true)
+      // somebody may have made it onto the board on the wall since it was last read
+      useLeaderboard.getState().refresh()
+      useArcadeStore.getState().leave()
+    }
+
     const onInput = (e: Event) => {
       const { view, settled, machine, escapeClaims } = useArcadeStore.getState()
       const key = e.type === "keydown" ? (e as KeyboardEvent).key : undefined
 
       if (view === "screen" && settled) {
         if (key !== "Escape" || escapeClaims > 0 || (e as KeyboardEvent).repeat) return
-        e.stopPropagation()
-        e.preventDefault()
-        setCursorPointer(false)
-        setRoomMounted(true)
-        useArcadeStore.getState().leave()
+        leave(e)
         return
       }
 
@@ -82,9 +91,19 @@ export default function Arcade() {
       if (view === "room" && (key === "Escape" || key === "Enter")) select(machine)
     }
 
+    // three clicks in a row also step back from the machine (detail counts the clicks made one right after the other)
+    const onClick = (e: MouseEvent) => {
+      const { view, settled } = useArcadeStore.getState()
+      if (view === "screen" && settled && e.detail === 3) leave(e)
+    }
+
     // capture, so it runs before the listeners of the pages
     BLOCKED_EVENTS.forEach((event) => window.addEventListener(event, onInput, true))
-    return () => BLOCKED_EVENTS.forEach((event) => window.removeEventListener(event, onInput, true))
+    window.addEventListener("click", onClick, true)
+    return () => {
+      BLOCKED_EVENTS.forEach((event) => window.removeEventListener(event, onInput, true))
+      window.removeEventListener("click", onClick, true)
+    }
   }, [])
 
   useEffect(() => {
@@ -99,6 +118,8 @@ export default function Arcade() {
     <div className={ "arcade" + (settled ? "" : " is-out") + (view === "room" ? " is-room" : "") }>
       {MACHINES.map(({ path }, index) => {
         const Page = PAGES[path]
+        // without the room the other pages can't be seen, so they aren't even running
+        if (!ROOM_ENABLED && index !== machine) return null
         return (
           <div
             className={ "arcade__screen" + (index === machine ? " is-playing" : "") }
@@ -120,9 +141,9 @@ export default function Arcade() {
         </Suspense>
       </div> }
 
-      <div className="arcade__hint" aria-hidden={ view !== "room" }>
+      { ROOM_ENABLED && <div className="arcade__hint" aria-hidden={ view !== "room" }>
         { isTouchDevice() ? "Tap a machine to play" : "Click a machine to play" }
-      </div>
+      </div> }
     </div>
   )
 }

@@ -57,6 +57,10 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
   /** The evolution cutscene that is playing: which team member and into what. */
   const [evolution, setEvolution] = useState<{ index: number; toId: string } | null>(null);
   const [cutscene, setCutscene] = useState(false);
+  /** A trainer is about to battle you: from the "!" (or talking to it) until the battle starts. */
+  const [trainerSpotted, setTrainerSpotted] = useState(false);
+  /** A battle was won: until the player can walk again (EXP, evolutions, the trainer's last words...). */
+  const [victory, setVictory] = useState<"wild" | "trainer" | null>(null);
   const [hasSave] = useState(() => loadSave() !== null);
 
   // Mirrors of the state for callbacks that must stay stable (game loop)
@@ -176,6 +180,8 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
 
   const beginBattle = useCallback((setup: BattleSetup) => {
     battleRef.current = setup;
+    setTrainerSpotted(false);
+    setVictory(null);
     setBanner(null);
     setBattleState(setup);
     setBattleId((i) => i + 1);
@@ -183,10 +189,12 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
   }, []);
 
   const startTrainer = useCallback(
-    (t: Trainer) =>
+    (t: Trainer) => {
+      setTrainerSpotted(true);
       openDialog(t.intro, () =>
         beginBattle({ enemy: toCombatant(SPECIES[t.speciesId], t.level), trainer: t })
-      ),
+      );
+    },
     [openDialog, beginBattle]
   );
 
@@ -220,6 +228,7 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
       const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
 
       setCutscene(true);
+      setTrainerSpotted(true);
       walkers.current[t.id] = { x: t.x, y: t.y, dir, alert: true };
       await wait(750); // "!"
       if (!alive()) return;
@@ -530,6 +539,16 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
     }
   }, [mode, dialog, cutscene, held]);
 
+  // the victory is over once the player is free to walk again
+  useEffect(() => {
+    if (victory && mode === "overworld" && !dialog) setVictory(null);
+  }, [victory, mode, dialog]);
+
+  /** The battle was won, before its EXP and level ups are shown. */
+  const winBattle = useCallback(() => {
+    setVictory(battleRef.current?.trainer ? "trainer" : "wild");
+  }, []);
+
   return {
     mode,
     mapId,
@@ -544,6 +563,9 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
     fadeKey,
     healing,
     cutscene,
+    trainerSpotted,
+    victory,
+    winBattle,
     evolution,
     hasSave,
     player,

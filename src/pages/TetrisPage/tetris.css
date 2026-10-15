@@ -35,6 +35,21 @@
   image-rendering: pixelated;
 }
 
+/* bonus of the lines just made, popping out of the middle of the board (effects.ts) */
+.tetris__popup {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  z-index: 1;
+  padding: 4px 12px;
+  background-color: var(--green-1);
+  color: var(--green-4);
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 /* title, pause and game over, over the board */
 .tetris__overlay {
   position: absolute;
@@ -53,6 +68,77 @@
   background-color: rgba(168, 185, 135, .88);
 }
 
+/* leaderboard at the end of a game */
+.tetris__scores {
+  width: 100%;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  text-align: left;
+}
+.tetris__scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* the score just saved */
+.tetris__scores li.is-new {
+  padding: 0 4px;
+  background-color: var(--green-1);
+  color: var(--green-4);
+}
+
+.name-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.name-entry__letters {
+  display: flex;
+  gap: 10px;
+}
+.name-entry__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.name-entry button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+}
+.name-entry__letter {
+  position: relative;
+  width: 1.4em;
+  line-height: 1.1;
+}
+/* the letter being chosen has a blinking cursor under it */
+.name-entry__letter.is-current::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -6px;
+  height: 4px;
+  background-color: var(--green-1);
+  animation: blink 1s steps(1, end) infinite;
+}
+.name-entry__step {
+  width: 44px;
+  height: 32px;
+  font-size: 18px;
+}
+.name-entry__ok {
+  padding: 6px 22px !important;
+  border: 3px solid var(--green-1) !important;
+}
+
 .tetris__hud {
   min-width: 150px;
   display: flex;
@@ -64,9 +150,48 @@
   flex-direction: column;
   gap: 6px;
 }
-.tetris__stat--next canvas {
+/* same width as the hud, so the board stays in the middle */
+.tetris__side {
+  min-width: 150px;
+  display: flex;
+  justify-content: flex-end;
+}
+/* the pieces after the next one, smaller */
+.tetris__stat--next {
+  gap: 10px;
+}
+.tetris__stat--next canvas, .tetris__stat--hold canvas {
   display: block;
   image-rendering: pixelated;
+}
+
+.tetris__sound {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--green-1);
+  font-family: inherit;
+}
+.tetris__sound svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tetris__restart {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 3px solid var(--green-1);
+  background: none;
+  color: var(--green-1);
+  font-family: inherit;
+}
+.tetris__restart:active {
+  background-color: var(--green-1);
+  color: var(--green-4);
 }
 
 .tetris__controls {
@@ -102,18 +227,47 @@
   .tetris {
     gap: 14px;
   }
+  /* hold on the left and the rest of the stats on the right, over the board */
   .tetris__game {
-    flex-direction: column-reverse;
-    align-items: center;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "side hud" "board board";
+    align-items: end;
+    gap: 12px 16px;
+    width: min(100%, 94vw);
+  }
+  .tetris__side {
+    grid-area: side;
+    min-width: 0;
   }
   .tetris__hud {
+    grid-area: hud;
     min-width: 0;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-end;
-    gap: 22px;
+    gap: 10px 16px;
+  }
+  .tetris__board {
+    grid-area: board;
+    justify-self: center;
   }
   .tetris__stat .title-s {
     font-size: 22px;
+  }
+  .tetris__restart {
+    align-self: flex-end;
+    padding: 4px 8px;
+  }
+  /* six buttons have to fit in the width of a phone */
+  .tetris__controls {
+    gap: min(10px, 2vw);
+  }
+  .tetris__button {
+    width: min(58px, 13vw);
+    height: min(58px, 13vw);
+  }
+  .tetris__button--rotate {
+    margin-left: min(16px, 3vw);
   }
 }

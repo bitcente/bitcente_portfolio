@@ -35,11 +35,14 @@
  * Keyboard: arrows/WASD move · Z/Space = A · X/Backspace = B · Enter = Start
  * (Esc is taken by the arcade room, see src/arcade)
  */
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import "./pokemon.css";
 import { useGame } from "./hooks/useGame";
 import { useGameInput } from "./hooks/useGameInput";
 import { useScale } from "./hooks/useScale";
+import { mapMusic, Music, useGameMusic } from "./hooks/useGameMusic";
+import { SpeakerIcon, useMuteButton } from "../../components/MuteButton";
 import { Battle } from "./components/battle/Battle";
 import { DialogBox } from "./components/DialogBox";
 import { Evolution } from "./components/evolution/Evolution";
@@ -63,6 +66,30 @@ export default function PokemonPage() {
     "--u": `${scale}px`,
   } as CSSProperties;
 
+  // the healing jingle plays once, from the moment the team is handed over until it ends
+  const [jingle, setJingle] = useState(false);
+  useEffect(() => {
+    if (g.healing) setJingle(true);
+  }, [g.healing]);
+
+  // what's playing, from the most to the least important (nothing on the title screen)
+  const inBattle = g.mode === "battle" || g.mode === "transition";
+  const trainerBattle = !!g.battle?.trainer;
+  const music: Music | undefined = jingle
+    ? { file: "pokemon_healed.mp3", once: true }
+    : g.victory
+    ? { file: g.victory === "trainer" ? "trainer_victory.mp3" : "wild_victory.mp3" }
+    : inBattle
+    ? { file: trainerBattle ? "trainer_battle.mp3" : "wild_battle.mp3" }
+    : g.trainerSpotted
+    ? { file: "trainer_sees_player.mp3" }
+    : g.mode !== "title"
+    ? mapMusic(g.mapId)
+    : undefined;
+  useGameMusic(music, () => setJingle(false));
+
+  const mute = useMuteButton();
+
   const lead = g.team[0];
   const showControls = (g.mode === "title" || g.mode === "overworld") && !g.dialog && !g.healing && !g.cutscene;
 
@@ -71,6 +98,9 @@ export default function PokemonPage() {
       <PaletteFilter />
 
       <div className="gb-screen" style={screenStyle}>
+        <button className="gb-pad-btn gb-sound" {...mute.props}>
+          <SpeakerIcon muted={mute.muted} />
+        </button>
         {g.mode !== "battle" && (
           <Overworld
             active={g.active}
@@ -113,6 +143,7 @@ export default function PokemonPage() {
             scale={scale}
             subscribe={subscribe}
             onFinish={g.finishBattle}
+            onVictory={g.winBattle}
           />
         )}
 

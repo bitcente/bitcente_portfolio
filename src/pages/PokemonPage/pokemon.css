@@ -182,6 +182,21 @@
 .gb-btn-b { left: 0;  bottom: 0; }
 .gb-btn-a { right: 0; top: 0; }
 
+/* mute button, in the top right corner right below the menu (START) button */
+.gb-sound {
+  position: absolute;
+  top: calc(var(--u) * 12.5);
+  right: calc(var(--u) * 3);
+  z-index: 30;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  padding: calc(var(--u) * 1.5);
+}
+.gb-sound svg {
+  width: 100%;
+  height: 100%;
+}
+
 .gb-start {
   position: absolute;
   top: calc(var(--u) * 3);

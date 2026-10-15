@@ -116,14 +116,19 @@
   right: 52px;
   z-index: 2;
 }
-/* just the X, without the box of .pv__close */
+/* just the pixel art X, without the box of .pv__close */
 .showcase .sc-detail__close {
   --size: 48px;
   border: none !important;
   background: none;
-  font-size: 7.75rem;
-  line-height: 1;
   transition: transform .1s steps(2);
+}
+/* 8 pixels of 6px. Not a target itself, or moving onto it fires the button's pointerout and the cursor stops being a pointer */
+.sc-detail__cross {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 .showcase .sc-detail__close:hover {
   background: none;
@@ -162,12 +167,16 @@
   display: none;
 }
 
+h3.sc-detail__type {
+  margin-top: 50px;
+}
+
 .sc-detail__inner {
   max-width: 1180px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 70px;
+  gap: 30px;
 }
 
 .sc-detail__header {
@@ -194,12 +203,10 @@
 }
 
 .sc-detail p {
-  color: var(--green-2);
+  /* darkest green, the lighter one hardly reads on the background */
+  color: var(--green-1);
   word-break: normal;
   overflow-wrap: normal;
-}
-.sc-detail p strong, .sc-detail p u {
-  color: var(--green-1);
 }
 .sc-detail p strong {
   font-weight: bold;
@@ -220,7 +227,7 @@
 }
 
 .sc-detail__text {
-  max-width: 620px;
+  /* max-width: 620px; */
 }
 .sc-detail__text h3:not(:last-child) {
   margin-bottom: 14px;
@@ -240,6 +247,35 @@
   /* never taller than the screen */
   max-height: calc(100dvh - 160px);
   pointer-events: none;
+}
+
+/* an image or video shown in big (MediaZoom), right in the body: over the CRT effect, under the cursor */
+.media-zoom {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--green-4);
+  user-select: none;
+}
+.media-zoom__media img, .media-zoom__media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.media-zoom__hint {
+  position: absolute;
+  bottom: 2dvh;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 /* low resolution copy drawn over the media while it's revealed */

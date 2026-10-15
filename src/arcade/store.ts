@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect } from "react"
 import { create } from "zustand"
+import { isMobile, isTouchPrimary } from "../utils/Screen"
 import { machineOrHome } from "./layout"
+
+// On mobile (phones and tablets, wide or not) there's no arcade room: it's never loaded, and each page is shown
+// on its own like a normal web. Getting to the room takes the ESC key anyway
+export const ROOM_ENABLED = !isMobile() && !isTouchPrimary()
 
 interface ArcadeState {
   // playing a machine, or standing in the room looking at them

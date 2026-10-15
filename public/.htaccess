@@ -1,0 +1,13 @@
+# The web is a single page app: /tetris, /pokemon... aren't files on the server, index.html shows them.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # real files and folders (assets, images, api/scores.php...) are served as they are
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # anything else is a page of the app
+  RewriteRule ^ index.html [L]
+</IfModule>
