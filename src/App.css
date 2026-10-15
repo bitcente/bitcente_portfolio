@@ -52,6 +52,28 @@ body {
   background: var(--bg-green-secondary);
 }
 
+/* loading bar shown until the intro can be played (usePreload), filled block by block */
+.start-screen__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.start-screen__bar {
+  display: flex;
+  gap: 3px;
+  width: min(320px, 70vw);
+  height: 28px;
+  padding: 3px;
+  border: 3px solid var(--green-1);
+}
+.start-screen__block {
+  flex: 1;
+}
+.start-screen__block.is-full {
+  background-color: var(--green-1);
+}
+
 .bitcente-icon__wrapper, .intro-desc, .socials, .bottom-desc {
   z-index: 2;
   visibility: hidden;

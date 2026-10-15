@@ -63,8 +63,8 @@ export const PLAYER_SPRITE = {
   rows: { down: 0, up: 1, left: 2 } as Partial<Record<Dir, number>>,
   idleFrame: 0,
   /** Columns used for the two alternating step frames. */
-  walkFrames: [1, 2] as const,
-  stepFraction: 0.5,
+  walkFrames: [1] as const,
+  stepFraction: .5,
 };
 
 
@@ -88,7 +88,7 @@ export const PLAYER_SPRITE = {
  */
 export const NPC_LAYOUT: SheetLayout = {
   frameW: 16,
-  frameH: 22,
+  frameH: 16,
   offsetX: 0,
   offsetY: -6,
   rows: { down: 0, up: 1, left: 2 },

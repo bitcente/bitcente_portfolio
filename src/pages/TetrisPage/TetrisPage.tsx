@@ -100,8 +100,9 @@ const QUIETEST = .2
 const MUSIC = "/audio/tetris/tetris_music.mp3"
 const MUSIC_VOLUME = .15
 
-// semitones the line sound can go up with the bonus, an octave
-const MAX_LINE_PITCH = 12
+// semitones the line sound goes up with every step of the bonus, and the most it can go up (two octaves)
+const LINE_PITCH_STEP = 2
+const MAX_LINE_PITCH = 24
 
 // sound and volume (0 to 1) of what happens in the game. Moving and rotating are silent
 const SOUNDS: Partial<Record<GameSound, [Sound, number]>> = {
@@ -211,8 +212,8 @@ export default function TetrisPage() {
     game.onSound = (sound, combo) => {
       const entry = SOUNDS[sound]
       if (!entry) return
-      // a semitone higher for every step of the bonus
-      const semitones = combo ? Math.min(combo - 1, MAX_LINE_PITCH) : 0
+      // higher for every step of the bonus
+      const semitones = combo ? Math.min((combo - 1) * LINE_PITCH_STEP, MAX_LINE_PITCH) : 0
       soundBoard().play(...entry, Math.pow(2, semitones / 12))
     }
     return () => {

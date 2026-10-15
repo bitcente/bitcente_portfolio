@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { gsap } from "gsap"
 import { isMobile, isTouchDevice } from "../../utils/Screen"
+import { videoSrc } from "../../utils/Video"
 import { getPalette, hexToRgb } from "./palette"
 import { fragmentShader, labelFragmentShader, vertexShader } from "./shaders"
 
@@ -225,7 +226,7 @@ export default class Carousel {
 
   /* MEDIA */
 
-  private loadMedia({ name, video: videoSrc, image }: CarouselItem): Media {
+  private loadMedia({ name, video: src, image }: CarouselItem): Media {
     const media: Media = {
       map: { value: this.titleCard(name) },
       size: { value: new THREE.Vector2(640, 360) },
@@ -236,7 +237,7 @@ export default class Carousel {
       media.size.value.set(width, height)
     }
 
-    if (videoSrc) {
+    if (src) {
       // never added to the DOM, so no controls
       const video = document.createElement("video")
       video.muted = true
@@ -244,7 +245,7 @@ export default class Carousel {
       video.playsInline = true
       // phones only load a video once it plays (on screen): all of them at once is too much memory for them
       video.preload = isMobile() ? "metadata" : "auto"
-      video.src = videoSrc
+      video.src = videoSrc(src)
       video.addEventListener("loadeddata", () => {
         replace(new THREE.VideoTexture(video), video.videoWidth, video.videoHeight)
         this.syncVideos()

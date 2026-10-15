@@ -7,12 +7,13 @@ import { useArcadeStore, useEscapeClaim, usePlaying } from '../../arcade/store';
 import { Sound } from '../../classes/SoundBoard';
 import { JobMap, projects } from '../../settings';
 import { isMobile as isDeviceMobile } from '../../utils/Screen';
-import BitcenteIcon from '../../components/BitcenteIcon';
+import BitcenteIcon, { BitcenteIconState } from '../../components/BitcenteIcon';
 import Tag from '../../components/Tag';
 import Award from '../../components/Award';
 import Carousel from './Carousel';
 import ProjectDetail from './ProjectDetail';
 import { SpeakerIcon, useMuteButton } from '../../components/MuteButton';
+import { usePreload } from './usePreload';
 import './showcase.css'
 gsap.registerPlugin(Draggable,SplitText);
 
@@ -41,6 +42,20 @@ const socials = [
   { name: "Email", icon: "svg/mail.svg", url: "mailto:hi@bitcente.com" },
   { name: "Phone", icon: "svg/telef.svg", url: "tel:+34601407676" },
 ]
+
+// everything the intro shows and plays, the page can't be started until it's all there
+const PRELOAD = {
+  images: [
+    ...logoLetters.flatMap((letter) => ["svg/logo/" + letter + ".svg", "svg/logo/dark/" + letter + ".svg"]),
+    ...socials.map(({ icon }) => icon),
+    "svg/pizza.svg",
+    "/svg/arrow_dialog.svg",
+    ...Object.values(BitcenteIconState).map((gif) => "/gif/" + gif),
+  ],
+  sounds: [Sound.StartIntro, Sound.Bitcente, Sound.StartDing, ...Object.values(letterSounds)],
+}
+// blocks of the loading bar
+const LOADING_BLOCKS = 20
 
 // px a finger has to travel to count as a swipe
 const SWIPE_DISTANCE = 40
@@ -87,6 +102,11 @@ function ShowcasePage() {
   const shownProject = projects[openedProject ?? hoveredProject ?? activeProject]
 
   const mute = useMuteButton()
+
+  const loadProgress = usePreload(PRELOAD)
+  const loaded = loadProgress >= 1
+  const loadedRef = useRef(loaded)
+  loadedRef.current = loaded
 
   const pointerEvents = {
     onPointerEnter: () => setCursorPointer(true),
@@ -424,7 +444,7 @@ function ShowcasePage() {
   useEffect(() => {
     const events = isMobile ? ["touchstart"] : ["keydown", "click"]
     const startExperience = () => {
-      if (!playingRef.current) return
+      if (!playingRef.current || !loadedRef.current) return
       setCursorPointer(false);
       gsap.to('.start-screen', {
         opacity: 0,
@@ -447,8 +467,16 @@ function ShowcasePage() {
       <div className="start-screen">
         <div className="start-screen__veil"></div>
         <div className="start-screen__content title-m">
-          { !isMobile && "PRESS ANY KEY TO START" }
-          { isMobile && "TAP ANYWHERE TO START" }
+          { loaded && !isMobile && "PRESS ANY KEY TO START" }
+          { loaded && isMobile && "TAP ANYWHERE TO START" }
+          { !loaded && <div className="start-screen__loading">
+            <div className="start-screen__bar" role="progressbar" aria-valuenow={ Math.floor(loadProgress * 100) } aria-valuemin={ 0 } aria-valuemax={ 100 }>
+              { Array.from({ length: LOADING_BLOCKS }, (_, i) => (
+                <div className={ "start-screen__block" + (i < Math.floor(loadProgress * LOADING_BLOCKS) ? " is-full" : "") } key={ i }></div>
+              )) }
+            </div>
+            <span className="text-s">LOADING { Math.floor(loadProgress * 100) }%</span>
+          </div> }
         </div>
       </div>
       <div className={ "global showcase " + ((view === View.Intro) ? "start" : "content") + (isOpen ? " project-open" : "") }>

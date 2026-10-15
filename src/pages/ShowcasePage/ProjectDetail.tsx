@@ -6,6 +6,7 @@ import { Sound } from "../../classes/SoundBoard"
 import { JobMap, ProjectType } from "../../settings"
 import { formatText } from "../../utils/Text"
 import { isMobile } from "../../utils/Screen"
+import { videoSrc } from "../../utils/Video"
 import Tag from "../../components/Tag"
 import Award from "../../components/Award"
 import LinkArrow from "../../components/LinkArrow"
@@ -58,9 +59,24 @@ interface ProjectDetailProps {
   onClose: () => void
 }
 
-// muted loop without controls
+// muted loop without controls. Only loads and plays while it's on screen: a project has several videos, and all of
+// them playing at once is too much for a phone
 function Video({ src }: { src: string }) {
-  return <video src={ src } muted loop autoPlay playsInline disablePictureInPicture />
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const video = ref.current
+    if (!video) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {})
+      else video.pause()
+    })
+    observer.observe(video)
+    return () => {
+      observer.disconnect()
+      video.pause()
+    }
+  }, [src])
+  return <video ref={ ref } src={ videoSrc(src) } muted loop playsInline preload="metadata" disablePictureInPicture />
 }
 
 interface MediaProps {

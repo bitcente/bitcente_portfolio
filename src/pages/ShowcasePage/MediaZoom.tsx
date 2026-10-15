@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { gsap } from "gsap"
 import { useEscapeClaim } from "../../arcade/store"
 import { isTouchDevice } from "../../utils/Screen"
+import { videoSrc } from "../../utils/Video"
 
 export interface ZoomedMedia {
   video?: string
@@ -81,7 +82,7 @@ export default function MediaZoom({ media, onClose }: { media: ZoomedMedia, onCl
     <div className="media-zoom" ref={ rootRef } onClick={ close } role="dialog" aria-label={ media.alt ?? "Media" }>
       <div className="media-zoom__media" ref={ mediaRef }>
         { media.video
-          ? <video src={ media.video } muted loop autoPlay playsInline disablePictureInPicture />
+          ? <video src={ videoSrc(media.video) } muted loop autoPlay playsInline disablePictureInPicture />
           : <img src={ media.image } alt={ media.alt } draggable="false" /> }
       </div>
       <span className="media-zoom__hint text-s">{ isTouchDevice() ? "Tap to close" : "Click or ESC to close" }</span>
