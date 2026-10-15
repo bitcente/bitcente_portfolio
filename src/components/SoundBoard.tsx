@@ -9,10 +9,15 @@ export default function SoundBoard() {
 
     const SoundBoardElement = useMemo(() => soundBoard(), [])
     const muted = useBitcenteStore((state) => state.muted);
+    const volume = useBitcenteStore((state) => state.volume);
 
     useEffect(() => {
         SoundBoardElement.setMuted(muted);
     }, [muted])
+
+    useEffect(() => {
+        SoundBoardElement.setVolume(volume);
+    }, [volume])
 
     useEffect(() => {
         if (!soundPlayed) return;

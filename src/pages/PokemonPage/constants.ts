@@ -17,6 +17,9 @@ export const DELTA: Record<Dir, [number, number]> = {
   right: [1, 0],
 };
 
+/** The way back: where a character turns to face someone talking to it. */
+export const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
+
 // Where a new game starts
 export const NEW_GAME = { mapId: "sprout_town", x: 9, y: 9, dir: "down" as Dir };
 

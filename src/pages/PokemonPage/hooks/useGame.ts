@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
-import { DELTA, ENCOUNTER_RATE, NEW_GAME, STEP_TIME } from "../constants";
+import { DELTA, ENCOUNTER_RATE, NEW_GAME, OPPOSITE, STEP_TIME } from "../constants";
 import { SPECIES } from "../data/species";
 import { POTION_HEAL, STARTING_ITEMS } from "../items";
-import { MAPS, npcToTalk, tileAt, trainerDir, triggeredTrainer, warpAt } from "../maps";
+import { MAPS, npcToTalk, tileAt, trainerDir, trainerToTalk, triggeredTrainer, warpAt } from "../maps";
 import {
   STARTER,
   createMember,
@@ -75,6 +75,8 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
   const dialogRef = useRef<DialogState | null>(null);
   const healTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const walkers = useRef<Record<string, Walker>>({}); // trainers moved by a cutscene
+  // characters that turned to face the player when talked to, by id, until the player leaves the map
+  const facing = useRef<Record<string, Dir>>({});
   const evoQueueRef = useRef<number[]>([]); // team members waiting to evolve
   const evolutionRef = useRef<{ index: number; toId: string } | null>(null);
   const afterEvoRef = useRef<(() => void) | null>(null); // runs when the evolutions are over
@@ -171,6 +173,7 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
     p.progress = 0;
     if (dir) p.dir = dir;
     walkers.current = {};
+    facing.current = {};
     setMapId(id);
     setBanner({ text: MAPS[id].name, key: Date.now() });
     setFadeKey((k) => k + 1);
@@ -200,10 +203,11 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
 
   /**
    * A trainer spotted you: you stop, a "!" appears, it walks up to you,
-   * says its line and the battle starts.
+   * says its line and the battle starts. Talked to (`talked`), it's already
+   * next to you: it turns to you, the "!" appears and the battle starts.
    */
   const approachTrainer = useCallback(
-    async (t: Trainer) => {
+    async (t: Trainer, talked = false) => {
       const alive = () => mountedRef.current;
       const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
       /** Calls `fn(0..1)` every frame for `ms` milliseconds. */
@@ -220,12 +224,11 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
         });
 
       const p = player.current;
-      const dir = trainerDir(t);
+      const dir = talked ? OPPOSITE[p.dir] : trainerDir(t);
       const [dx, dy] = DELTA[dir];
       // how many tiles away you are, if you stand right on its line of sight
       const dist = Math.abs(p.x - t.x) + Math.abs(p.y - t.y);
-      const onLine = !t.trigger && p.x === t.x + dx * dist && p.y === t.y + dy * dist;
-      const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
+      const onLine = !talked && !t.trigger && p.x === t.x + dx * dist && p.y === t.y + dy * dist;
 
       setCutscene(true);
       setTrainerSpotted(true);
@@ -299,15 +302,30 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
     [openDialog, setTeam, persist]
   );
 
-  /** Pressing A: talk to whoever you are facing. */
+  /**
+   * Pressing A: talk to whoever you are facing. They turn to you first. A
+   * trainer you haven't beaten yet challenges you right there, like when it
+   * spots you; a beaten one just talks.
+   */
   const interact = useCallback(() => {
     const p = player.current;
     if (p.moving) return;
-    const npc = npcToTalk(MAPS[mapIdRef.current], p.x, p.y, p.dir);
+    const map = MAPS[mapIdRef.current];
+
+    const trainer = trainerToTalk(map, p.x, p.y, p.dir);
+    if (trainer) {
+      facing.current[trainer.id] = OPPOSITE[p.dir];
+      if (defeatedRef.current.includes(trainer.id)) openDialog(trainer.after ?? trainer.win);
+      else void approachTrainer(trainer, true);
+      return;
+    }
+
+    const npc = npcToTalk(map, p.x, p.y, p.dir);
     if (!npc) return;
+    facing.current[npc.id] = OPPOSITE[p.dir];
     if (npc.kind === "nurse") talkToNurse(npc);
     else openDialog(npc.lines ?? ["..."]);
-  }, [talkToNurse, openDialog]);
+  }, [talkToNurse, openDialog, approachTrainer]);
 
   /* ---------- game loop callback ---------- */
 
@@ -574,6 +592,8 @@ export function useGame(held: MutableRefObject<Set<Btn>>, subscribe: InputSubscr
     /** Keep the overworld repainting while a trainer walks up to you. */
     animating: cutscene,
     walkers,
+    /** Where the characters that were talked to are facing now. */
+    facing,
     handleStep,
     startNew,
     continueGame,

@@ -1,0 +1,58 @@
+/* SOUND BUTTONS: the button and the bar it opens to drag the volume (VolumeControl in MuteButton.tsx).
+   Only the mechanics are here: each page dresses its .volume--<variant> in its own style */
+
+.volume {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.volume__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+/* under the button by default, each page moves it where it fits */
+.volume__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+}
+
+.volume__track {
+  --volume: 1;
+  position: relative;
+  width: 140px;
+  height: 16px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+.volume__track:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+.volume__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--volume) * 100%);
+}
+
+.volume__thumb {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--volume) * 100%);
+  transform: translate(-50%, -50%);
+}
+
+/* muted with M: the volume is kept, the bar shows it faded until it's dragged again */
+.volume.is-muted .volume__fill,
+.volume.is-muted .volume__thumb {
+  opacity: .35;
+}

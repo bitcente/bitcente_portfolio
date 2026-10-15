@@ -15,6 +15,8 @@ interface Props {
   animating: boolean;
   /** Characters moved by a cutscene, by id. They replace the position in the map data. */
   walkers: MutableRefObject<Record<string, Walker>>;
+  /** Characters that turned to face the player (talked to), by id. */
+  facing: MutableRefObject<Record<string, Dir>>;
   /** Logical size of the screen in game pixels (changes with the window). */
   viewW: number;
   viewH: number;
@@ -40,6 +42,7 @@ export function Overworld({
   active,
   animating,
   walkers,
+  facing,
   viewW,
   viewH,
   map,
@@ -88,18 +91,19 @@ export function Overworld({
         const ty = w ? w.y : t.y;
         const sx = Math.round(tx * TILE) - camX;
         const sy = Math.round(ty * TILE) - camY;
-        const dir = w ? w.dir : trainerDir(t);
+        const dir = w ? w.dir : facing.current[t.id] ?? trainerDir(t);
         const sheet = sprites.npcs[t.sprite ?? "trainer"] ?? sprites.npcs.trainer;
         if (sheet) drawNpcSprite(ctx, sheet, sx, sy, dir, w?.moving, w?.progress, w?.parity);
         else drawNpc(ctx, sx, sy, dir, "trainer", w?.stride ?? 0);
-        if (w?.alert) drawAlert(ctx, sx, sy - (sheet ? 8 : 2));
+        if (w?.alert) drawAlert(ctx, sx, sy - 2);
       }
       for (const n of map.npcs ?? []) {
         const sx = n.x * TILE - camX;
         const sy = n.y * TILE - camY;
+        const dir = facing.current[n.id] ?? n.dir;
         const sheet = sprites.npcs[n.sprite ?? n.kind] ?? sprites.npcs[n.kind];
-        if (sheet) drawNpcSprite(ctx, sheet, sx, sy, n.dir);
-        else drawNpc(ctx, sx, sy, n.dir, n.kind);
+        if (sheet) drawNpcSprite(ctx, sheet, sx, sy, dir);
+        else drawNpc(ctx, sx, sy, dir, n.kind);
       }
 
       const stride = p.moving ? (Math.floor(p.progress * 2) + p.parity) % 2 : 0;
@@ -175,7 +179,7 @@ export function Overworld({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [active, animating, walkers, viewW, viewH, map, sprites, player, held, onStepEnd]);
+  }, [active, animating, walkers, facing, viewW, viewH, map, sprites, player, held, onStepEnd]);
 
   return (
     <canvas

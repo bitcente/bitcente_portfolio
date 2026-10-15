@@ -11,11 +11,37 @@
   justify-content: center;
   align-items: center;
   gap: 24px;
-  /* same background as .global */
-  background: var(--bg-green-secondary);
-  box-shadow: inset 0 0 1000px var(--bg-green-primary);
+  --tetris-panel: rgba(6, 8, 24, .82);
+  --tetris-frame: #6f7cff;
+  --tetris-yellow: #ffd52e;
+  --tetris-text: #f4f1ff;
+  background-color: #070a1c;
+  color: var(--tetris-text);
   user-select: none;
   touch-action: none;
+}
+
+/* the scene behind, drawn small and scaled up in big pixels (backdrop.ts) */
+.tetris__backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.tetris__game, .tetris__keys, .tetris__controls {
+  position: relative;
+}
+.tetris__keys {
+  padding: 4px 10px;
+  background-color: var(--tetris-panel);
+  color: #aab0e0;
+}
+
+.tetris__label {
+  color: var(--tetris-yellow);
 }
 
 .tetris__game {
@@ -27,7 +53,10 @@
 .tetris__board {
   position: relative;
   padding: 6px;
-  border: 4px solid var(--green-1);
+  border: 4px solid var(--tetris-frame);
+  outline: 3px solid #1a1f4a;
+  background-color: var(--tetris-panel);
+  box-shadow: 0 0 24px rgba(111, 124, 255, .45);
   line-height: 0;
 }
 .tetris__board canvas {
@@ -42,8 +71,8 @@
   left: 50%;
   z-index: 1;
   padding: 4px 12px;
-  background-color: var(--green-1);
-  color: var(--green-4);
+  background-color: var(--tetris-yellow);
+  color: #1a1030;
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
@@ -65,7 +94,15 @@
   gap: 18px;
   text-align: center;
   line-height: 1.2;
-  background-color: rgba(168, 185, 135, .88);
+  background-color: rgba(6, 8, 24, .86);
+}
+
+/* the high score on the title */
+.tetris__best {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 /* leaderboard at the end of a game */
@@ -84,10 +121,13 @@
   gap: 12px;
 }
 /* the score just saved */
+.tetris__scores li:first-child {
+  color: var(--tetris-yellow);
+}
 .tetris__scores li.is-new {
   padding: 0 4px;
-  background-color: var(--green-1);
-  color: var(--green-4);
+  background-color: var(--tetris-frame);
+  color: var(--tetris-text);
 }
 
 .name-entry {
@@ -126,7 +166,7 @@
   right: 10%;
   bottom: -6px;
   height: 4px;
-  background-color: var(--green-1);
+  background-color: currentColor;
   animation: blink 1s steps(1, end) infinite;
 }
 .name-entry__step {
@@ -136,14 +176,20 @@
 }
 .name-entry__ok {
   padding: 6px 22px !important;
-  border: 3px solid var(--green-1) !important;
+  border: 3px solid currentColor !important;
+}
+.tetris .name-entry__letter.is-current {
+  color: var(--tetris-yellow);
 }
 
 .tetris__hud {
   min-width: 150px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 22px;
+  border: 3px solid var(--tetris-frame);
+  background-color: var(--tetris-panel);
 }
 .tetris__stat {
   display: flex;
@@ -155,6 +201,11 @@
   min-width: 150px;
   display: flex;
   justify-content: flex-end;
+}
+.tetris__stat--hold {
+  padding: 14px 16px;
+  border: 3px solid var(--tetris-frame);
+  background-color: var(--tetris-panel);
 }
 /* the pieces after the next one, smaller */
 .tetris__stat--next {
@@ -173,7 +224,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--green-1);
+  color: var(--tetris-text);
   font-family: inherit;
 }
 .tetris__sound svg {
@@ -181,17 +232,41 @@
   height: 20px;
 }
 
+/* the volume bar: a dark panel of the hud with the bar in yellow segments, like a level meter */
+.volume--tetris {
+  align-self: flex-start;
+}
+.volume--tetris .volume__panel {
+  padding: 12px 14px;
+  border: 3px solid var(--tetris-frame);
+  background-color: #0b0f2a;
+  box-shadow: 0 0 18px rgba(111, 124, 255, .35);
+}
+.volume--tetris .volume__track {
+  width: 132px;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #1f2552 0 9px, transparent 9px 12px);
+}
+.volume--tetris .volume__fill {
+  background: repeating-linear-gradient(90deg, var(--tetris-yellow) 0 9px, transparent 9px 12px);
+}
+.volume--tetris .volume__thumb {
+  width: 6px;
+  height: 22px;
+  background-color: var(--tetris-text);
+  box-shadow: 0 0 8px rgba(255, 213, 46, .8);
+}
+
 .tetris__restart {
   align-self: flex-start;
   padding: 6px 10px;
-  border: 3px solid var(--green-1);
+  border: 3px solid var(--tetris-frame);
   background: none;
-  color: var(--green-1);
+  color: var(--tetris-text);
   font-family: inherit;
 }
 .tetris__restart:active {
-  background-color: var(--green-1);
-  color: var(--green-4);
+  background-color: var(--tetris-frame);
 }
 
 .tetris__controls {
@@ -205,17 +280,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 3px solid var(--green-1);
-  background: none;
-  color: var(--green-1);
+  border: 3px solid var(--tetris-frame);
+  background-color: var(--tetris-panel);
+  color: var(--tetris-yellow);
   font: inherit;
   font-size: 26px;
   line-height: 1;
   touch-action: none;
 }
 .tetris__button:active {
-  background-color: var(--green-1);
-  color: var(--green-4);
+  background-color: var(--tetris-frame);
+  color: var(--tetris-text);
 }
 /* a bit of air between moving and the buttons that commit the piece */
 .tetris__button--rotate {
@@ -254,6 +329,9 @@
   }
   .tetris__stat .title-s {
     font-size: 22px;
+  }
+  .tetris__hud, .tetris__stat--hold {
+    padding: 8px 10px;
   }
   .tetris__restart {
     align-self: flex-end;

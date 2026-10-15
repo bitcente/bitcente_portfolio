@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { MachineConfig } from "./layout"
-import { useLeaderboard } from "../leaderboard"
+import { Game, LEADERBOARDS } from "../leaderboard"
 
 // Every texture of the room is drawn here on canvases, so there's nothing to download. They're made once and shared
 
@@ -308,7 +308,7 @@ export const sideArt = (config: MachineConfig, index: number) => cached("side" +
       ctx.fillRect(x - s * 1.5, y, s * 4, s)
       ctx.fillRect(x, y - s * 1.5, s, s * 4)
     }
-  } else {
+  } else if (index === 2) {
     // bubbles and lightning
     for (let i = 0; i < 14; i++) {
       ctx.strokeStyle = i % 3 ? config.accent : "#ffffff"
@@ -327,6 +327,38 @@ export const sideArt = (config: MachineConfig, index: number) => cached("side" +
     ctx.lineTo(w * .55, 270)
     ctx.lineTo(w * .65, 120)
     ctx.closePath()
+    ctx.fill()
+  } else {
+    // a maze, the ghosts and pacman going for them
+    ctx.strokeStyle = config.accent
+    ctx.lineWidth = 12
+    ctx.strokeRect(40, 60, w - 80, h * .42)
+    ctx.strokeRect(120, 150, w - 240, 120)
+    ctx.strokeRect(120, 330, 110, 70)
+    ctx.strokeRect(w - 230, 330, 110, 70)
+    ctx.fillStyle = "#ffffff"
+    for (let x = 80; x < w - 60; x += 36) ctx.fillRect(x - 5, 105, 10, 10)
+    ;["#ff2a2a", "#ffb8ff", "#00ffff", "#ffb851"].forEach((color, i) => {
+      const x = 110 + i * 92
+      const y = 470
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(x, y, 34, Math.PI, 0)
+      ctx.lineTo(x + 34, y + 40)
+      for (let foot = 0; foot < 3; foot++) ctx.lineTo(x + 34 - foot * 23 - 11, y + (foot % 2 ? 40 : 28))
+      ctx.lineTo(x - 34, y + 40)
+      ctx.fill()
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(x - 20, y - 12, 14, 18)
+      ctx.fillRect(x + 6, y - 12, 14, 18)
+      ctx.fillStyle = "#2121ff"
+      ctx.fillRect(x - 14, y - 4, 8, 8)
+      ctx.fillRect(x + 12, y - 4, 8, 8)
+    })
+    ctx.fillStyle = "#ffff00"
+    ctx.beginPath()
+    ctx.arc(w / 2, 220, 48, Math.PI * 1.2, Math.PI * .8)
+    ctx.lineTo(w / 2, 220)
     ctx.fill()
   }
   ctx.restore()
@@ -492,13 +524,12 @@ interface PosterArt {
   title: string
   background: [string, string]
   color: string
-  motif: "sun" | "ship" | "ghosts"
+  motif: "sun" | "ship"
 }
 
 export const POSTERS: PosterArt[] = [
   { title: "BLADE RUNNER", background: ["#2a0a3a", "#ff5e9a"], color: "#ffe14d", motif: "sun" },
   { title: "TRON SOON", background: ["#020314", "#1b2a6a"], color: "#33e1ff", motif: "ship" },
-  { title: "PACMAN", background: ["#050505", "#1d1d1d"], color: "#ffd84a", motif: "ghosts" },
 ]
 
 export const poster = (art: PosterArt) => cached("poster" + art.title, () => texture(384, 512, (ctx, w, h) => {
@@ -532,7 +563,7 @@ export const poster = (art: PosterArt) => cached("poster" + art.title, () => tex
       ctx.lineTo(w, y)
       ctx.stroke()
     }
-  } else if (art.motif === "ship") {
+  } else {
     for (let i = 0; i < 120; i++) {
       ctx.fillStyle = `rgba(255, 255, 255, ${ random(.2, 1) })`
       ctx.fillRect(random(0, w), random(0, h), 2, 2)
@@ -547,28 +578,6 @@ export const poster = (art: PosterArt) => cached("poster" + art.title, () => tex
     ctx.fill()
     ctx.fillStyle = "#ff5a1f"
     ctx.fillRect(w / 2 - 10, 330, 20, 60)
-  } else {
-    ctx.strokeStyle = "#2b3bff"
-    ctx.lineWidth = 10
-    ctx.strokeRect(40, 150, w - 80, 250)
-    ctx.strokeRect(110, 220, w - 220, 110)
-    ;["#ff3b3b", "#33e1ff", "#ffb8ff"].forEach((color, i) => {
-      const x = 110 + i * 82
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(x, 186, 22, Math.PI, 0)
-      ctx.lineTo(x + 22, 212)
-      ctx.lineTo(x - 22, 212)
-      ctx.fill()
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(x - 12, 180, 8, 8)
-      ctx.fillRect(x + 4, 180, 8, 8)
-    })
-    ctx.fillStyle = art.color
-    ctx.beginPath()
-    ctx.arc(w / 2, 370, 26, .3, Math.PI * 2 - .3)
-    ctx.lineTo(w / 2, 370)
-    ctx.fill()
   }
 
   ctx.font = `56px ${ FONT }`
@@ -590,26 +599,41 @@ export const poster = (art: PosterArt) => cached("poster" + art.title, () => tex
   grain(ctx, w, h, 18, .15)
 }, { text: true }))
 
-// the real best tetris scores (see src/leaderboard.ts), redrawn whenever they change
-export const tetrisLeaderboard = () => cached("tetrisLeaderboard", () => {
+interface BoardArt {
+  title: string
+  background: string
+  color: string
+  // colour of the best score
+  best: string
+}
+
+const BOARDS: Record<Game, BoardArt> = {
+  tetris: { title: "TETRIS LEADERBOARD", background: "#070a1c", color: "#aab0e0", best: "#ffd52e" },
+  pacman: { title: "PACMAN LEADERBOARD", background: "#05050f", color: "#dedeff", best: "#ffff00" },
+}
+
+// the real best scores of a game (see src/leaderboard.ts), redrawn whenever they change
+export const leaderboard = (game: Game) => cached("leaderboard" + game, () => {
+  const art = BOARDS[game]
+  const store = LEADERBOARDS[game]
   const draw: Draw = (ctx, w, h) => {
-    const { scores, status } = useLeaderboard.getState()
-    ctx.fillStyle = "#0b0f08"
+    const { scores, status } = store.getState()
+    ctx.fillStyle = art.background
     ctx.fillRect(0, 0, w, h)
     ctx.textBaseline = "top"
     ctx.textAlign = "center"
-    ctx.fillStyle = "#c8e06a"
+    ctx.fillStyle = art.best
     ctx.font = `34px ${ FONT }`
-    ctx.fillText("TETRIS LEADERBOARD", w / 2, 26, w - 40)
+    ctx.fillText(art.title, w / 2, 26, w - 40)
     ctx.font = `30px ${ FONT }`
 
     const top = scores.slice(0, 5)
     if (!top.length) {
-      ctx.fillStyle = "#a8b987"
+      ctx.fillStyle = art.color
       ctx.fillText(status === "offline" ? "OUT OF ORDER" : status === "ready" ? "NO SCORES YET" : "LOADING...", w / 2, 170)
     }
     top.forEach(({ name, score }, i) => {
-      ctx.fillStyle = i ? "#a8b987" : "#ffe14d"
+      ctx.fillStyle = i ? art.color : art.best
       ctx.textAlign = "left"
       ctx.fillText(`${ i + 1 }. ${ name }`, 60, 100 + i * 50)
       ctx.textAlign = "right"
@@ -624,10 +648,10 @@ export const tetrisLeaderboard = () => cached("tetrisLeaderboard", () => {
     draw(ctx, 512, 384)
     result.needsUpdate = true
   }
-  useLeaderboard.subscribe((state, previous) => {
+  store.subscribe((state, previous) => {
     if (state.scores !== previous.scores || state.status !== previous.status) repaint()
   })
-  if (useLeaderboard.getState().status === "idle") useLeaderboard.getState().refresh()
+  if (store.getState().status === "idle") store.getState().refresh()
   return result
 })
 

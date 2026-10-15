@@ -5,7 +5,7 @@ import { MACHINES, machineWidth, placement } from "./layout"
 import FloorSpeaker from "./FloorSpeaker"
 import {
   brushedMetal, carpet, carpetBump, ceilingTiles, changeMachine, changeMachineGlow, contactShadow, exitSign, pizzaBox,
-  poster, POSTERS, tetrisLeaderboard, wainscot, wallBump, wallPaint,
+  leaderboard, poster, POSTERS, wainscot, wallBump, wallPaint,
 } from "./textures"
 
 export const BACKGROUND = "#040308"
@@ -270,11 +270,11 @@ export default function Room({ aspect }: { aspect: number }) {
       </mesh>
       <pointLight ref={ neonLight } position={ [0, 2.68, WALL_Z + .5] } color="#ff2f8e" intensity={ 5 } distance={ 11 } decay={ 2 } />
 
-      {/* on the wall: the tetris leaderboard over the first machine, posters over the last one and at the sides */}
-      <Framed map={ tetrisLeaderboard() } width={ .7 } height={ .52 } position={ [besideNeon(first.x, .7), 2.42] } />
-      <Framed map={ poster(POSTERS[0]) } width={ .42 } height={ .56 } position={ [besideNeon(last.x, .42), 2.42] } />
+      {/* on the wall: the leaderboards over the first (tetris) and the last (pacman) machine, posters at the sides */}
+      <Framed map={ leaderboard("tetris") } width={ .7 } height={ .52 } position={ [besideNeon(first.x, .7), 2.42] } />
+      <Framed map={ leaderboard("pacman") } width={ .7 } height={ .52 } position={ [besideNeon(last.x, .7), 2.42] } />
       <Framed map={ poster(POSTERS[1]) } width={ .42 } height={ .56 } position={ [-halfRow - .45, 1.75] } />
-      <Framed map={ poster(POSTERS[2]) } width={ .42 } height={ .56 } position={ [halfRow + .45, 1.75] } />
+      <Framed map={ poster(POSTERS[0]) } width={ .42 } height={ .56 } position={ [halfRow + .45, 1.75] } />
 
       {/* exit, top left */}
       <group position={ [-halfRow - .45, 2.95, WALL_Z + .05] }>

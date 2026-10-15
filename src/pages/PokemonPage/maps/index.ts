@@ -31,6 +31,12 @@ export const npcToTalk = (m: GameMap, x: number, y: number, dir: Dir): Npc | und
   );
 };
 
+/** The trainer right in front of you at (x, y) facing `dir`, if any. */
+export const trainerToTalk = (m: GameMap, x: number, y: number, dir: Dir): Trainer | undefined => {
+  const [dx, dy] = DELTA[dir];
+  return m.trainers?.find((t) => t.x === x + dx && t.y === y + dy);
+};
+
 export const warpAt = (m: GameMap, x: number, y: number): Warp | undefined =>
   m.warps.find((w) => w.x === x && w.y === y);
 

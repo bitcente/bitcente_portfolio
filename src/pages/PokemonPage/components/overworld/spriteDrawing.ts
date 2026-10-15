@@ -37,11 +37,37 @@ export function drawTileSprite(
   return true;
 }
 
+/** Whether a frame of a sheet has anything drawn in it (sheets may leave some empty). Checked once per frame. */
+const filledFrames = new WeakMap<HTMLImageElement, Map<string, boolean>>();
+function hasFrame(img: HTMLImageElement, layout: SheetLayout, row: number, col: number) {
+  let frames = filledFrames.get(img);
+  if (!frames) filledFrames.set(img, (frames = new Map()));
+  const { frameW, frameH } = layout;
+  const key = `${frameW}x${frameH}:${row},${col}`;
+  let filled = frames.get(key);
+  if (filled === undefined) {
+    filled = false;
+    if ((col + 1) * frameW <= img.width && (row + 1) * frameH <= img.height) {
+      const canvas = document.createElement("canvas");
+      canvas.width = frameW;
+      canvas.height = frameH;
+      const c = canvas.getContext("2d", { willReadFrequently: true })!;
+      c.drawImage(img, col * frameW, row * frameH, frameW, frameH, 0, 0, frameW, frameH);
+      const { data } = c.getImageData(0, 0, frameW, frameH);
+      for (let i = 3; i < data.length && !filled; i += 4) filled = data[i] > 0;
+    }
+    frames.set(key, filled);
+  }
+  return filled;
+}
+
 /**
  * Draws one character from a sprite sheet (the player or an NPC): picks the
  * row of the direction (mirroring the left row for "right") and the column
  * of the walk cycle: idle, then step A / step B (alternating per tile) for
  * the first part of each tile, then idle again.
+ * Empty frames are skipped: a missing step shows the idle frame, and a missing
+ * direction shows the character facing down.
  */
 export function drawSheetSprite(
   ctx: CanvasRenderingContext2D,
@@ -66,9 +92,14 @@ export function drawSheetSprite(
     flip = true;
   }
   row ??= rows.down ?? 0;
+  if (!hasFrame(img, layout, row, idleFrame)) {
+    row = rows.down ?? 0;
+    flip = false;
+  }
 
+  const step = walkFrames[parity % walkFrames.length];
   const col =
-    moving && progress < stepFraction ? walkFrames[parity % walkFrames.length] : idleFrame;
+    moving && progress < stepFraction && hasFrame(img, layout, row, step) ? step : idleFrame;
   const dx = x + offsetX;
   const dy = y + offsetY;
 

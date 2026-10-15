@@ -12,7 +12,7 @@ import Tag from '../../components/Tag';
 import Award from '../../components/Award';
 import Carousel from './Carousel';
 import ProjectDetail from './ProjectDetail';
-import { SpeakerIcon, useMuteButton } from '../../components/MuteButton';
+import { VolumeControl } from '../../components/MuteButton';
 import { usePreload } from './usePreload';
 import './showcase.css'
 gsap.registerPlugin(Draggable,SplitText);
@@ -101,7 +101,6 @@ function ShowcasePage() {
   }, [playing, settled])
   const shownProject = projects[openedProject ?? hoveredProject ?? activeProject]
 
-  const mute = useMuteButton()
 
   const loadProgress = usePreload(PRELOAD)
   const loaded = loadProgress >= 1
@@ -506,9 +505,7 @@ function ShowcasePage() {
           <div className={"social " + (draggingPizza ? 'dragging' : '')} {...pointerEvents}>
             <img src="svg/pizza.svg" alt="Pizza Icon" id="pizza" {...pointerEvents} />
           </div>
-          <button className="social social--sound" { ...mute.props }>
-            <SpeakerIcon muted={ mute.muted } padded />
-          </button>
+          <VolumeControl variant="site" buttonClassName="social social--sound" padded />
         </div>
 
         <div

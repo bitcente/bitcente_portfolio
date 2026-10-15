@@ -1,11 +1,12 @@
 import { ComponentType, lazy, Suspense, useEffect, useRef, useState } from "react"
 import CrtOverlay from "../components/CrtOverlay"
+import PacmanPage from "../pages/PacmanPage/PacmanPage"
 import PokemonPage from "../pages/PokemonPage/PokemonPage"
 import ShowcasePage from "../pages/ShowcasePage/ShowcasePage"
 import TetrisPage from "../pages/TetrisPage/TetrisPage"
 import { useBitcenteStore } from "../store"
 import { isTouchDevice } from "../utils/Screen"
-import { useLeaderboard } from "../leaderboard"
+import { LEADERBOARDS } from "../leaderboard"
 import type { ArcadeScreens } from "./ArcadeRoom"
 import { cleanPath, machineFor, MACHINES } from "./layout"
 import { MachineContext, ROOM_ENABLED, useArcadeStore } from "./store"
@@ -19,6 +20,7 @@ const PAGES: Record<string, ComponentType> = {
   "/tetris": TetrisPage,
   "/": ShowcasePage,
   "/pokemon": PokemonPage,
+  "/pacman": PacmanPage,
 }
 
 // ms after the page loads to get the room ready in the background, once the intro animations of the pages are over
@@ -71,8 +73,8 @@ export default function Arcade() {
       e.preventDefault()
       setCursorPointer(false)
       setRoomMounted(true)
-      // somebody may have made it onto the board on the wall since it was last read
-      useLeaderboard.getState().refresh()
+      // somebody may have made it onto the boards on the wall since they were last read
+      Object.values(LEADERBOARDS).forEach((leaderboard) => leaderboard.getState().refresh())
       useArcadeStore.getState().leave()
     }
 

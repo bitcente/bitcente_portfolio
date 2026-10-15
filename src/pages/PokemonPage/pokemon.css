@@ -51,10 +51,34 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--u) * 10);
+  gap: calc(var(--u) * 4);
+  /* clear of the hint at the bottom */
+  padding-bottom: calc(var(--u) * 6);
   background: #fff;
   text-align: center;
   cursor: pointer;
+}
+
+/* the logo (128x56) and the trainer (40x64) in Game Boy pixels, see TitleArt.tsx */
+.gb-title-logo,
+.gb-title-trainer {
+  display: block;
+  image-rendering: pixelated;
+}
+.gb-title-logo {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 56);
+}
+.gb-title-trainer {
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 64);
+}
+
+/* the menu on the left and the trainer on the right, like the title of the old games */
+.gb-title-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 20);
 }
 
 .gb-title-name {
@@ -127,11 +151,10 @@
   pointer-events: none;
 }
 
-/* Uncomment to hide the touch controls on devices with a mouse:
+/* on devices with a mouse the keyboard plays: only the START (MENU) button stays, to open the menu with a click */
 @media (hover: hover) and (pointer: fine) {
-  .gb-overlay { display: none; }
+  .gb-dpad, .gb-ab { display: none; }
 }
-*/
 
 .gb-pad-btn {
   display: flex;
@@ -183,11 +206,14 @@
 .gb-btn-a { right: 0; top: 0; }
 
 /* mute button, in the top right corner right below the menu (START) button */
-.gb-sound {
+/* the sound button and its volume bar, in the top right corner below the START button */
+.volume--gb {
   position: absolute;
   top: calc(var(--u) * 12.5);
   right: calc(var(--u) * 3);
   z-index: 30;
+}
+.gb-sound {
   width: calc(var(--u) * 8);
   height: calc(var(--u) * 8);
   padding: calc(var(--u) * 1.5);
@@ -195,6 +221,26 @@
 .gb-sound svg {
   width: 100%;
   height: 100%;
+}
+/* a box like the menus of the game, to the left of the button, with a bar of blocks like the HP bar */
+.volume--gb .volume__panel {
+  top: 0;
+  right: calc(100% + var(--u) * 2);
+  left: auto;
+  padding: calc(var(--u) * 2.5) calc(var(--u) * 3);
+  border: var(--u) solid #000;
+  background: #fff;
+}
+.volume--gb .volume__track {
+  width: calc(var(--u) * 33);
+  height: calc(var(--u) * 3);
+  background: repeating-linear-gradient(90deg, #aaa 0 calc(var(--u) * 2), transparent calc(var(--u) * 2) calc(var(--u) * 3));
+}
+.volume--gb .volume__fill {
+  background: repeating-linear-gradient(90deg, #000 0 calc(var(--u) * 2), transparent calc(var(--u) * 2) calc(var(--u) * 3));
+}
+.volume--gb .volume__thumb {
+  display: none;
 }
 
 .gb-start {

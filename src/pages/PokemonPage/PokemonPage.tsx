@@ -42,7 +42,7 @@ import { useGame } from "./hooks/useGame";
 import { useGameInput } from "./hooks/useGameInput";
 import { useScale } from "./hooks/useScale";
 import { mapMusic, Music, useGameMusic } from "./hooks/useGameMusic";
-import { SpeakerIcon, useMuteButton } from "../../components/MuteButton";
+import { VolumeControl } from "../../components/MuteButton";
 import { Battle } from "./components/battle/Battle";
 import { DialogBox } from "./components/DialogBox";
 import { Evolution } from "./components/evolution/Evolution";
@@ -88,7 +88,6 @@ export default function PokemonPage() {
     : undefined;
   useGameMusic(music, () => setJingle(false));
 
-  const mute = useMuteButton();
 
   const lead = g.team[0];
   const showControls = (g.mode === "title" || g.mode === "overworld") && !g.dialog && !g.healing && !g.cutscene;
@@ -98,14 +97,13 @@ export default function PokemonPage() {
       <PaletteFilter />
 
       <div className="gb-screen" style={screenStyle}>
-        <button className="gb-pad-btn gb-sound" {...mute.props}>
-          <SpeakerIcon muted={mute.muted} />
-        </button>
+        <VolumeControl variant="gb" buttonClassName="gb-pad-btn gb-sound" />
         {g.mode !== "battle" && (
           <Overworld
             active={g.active}
             animating={g.animating}
             walkers={g.walkers}
+            facing={g.facing}
             viewW={width}
             viewH={height}
             map={g.map}

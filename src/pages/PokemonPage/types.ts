@@ -178,6 +178,8 @@ export interface Trainer extends Pos {
   trigger?: Pos[];
   intro: string[];
   win: string[];
+  /** What it says when you talk to it after beating it (default: the `win` lines). */
+  after?: string[];
   badge?: string;
 }
 

@@ -17,7 +17,10 @@ import { MAPS } from "./maps";
 import type { Dir } from "./types";
 
 // Works with Vite (BASE_URL is "/" unless the app is deployed under a subpath).
-const url = (file: string) => `${import.meta.env.BASE_URL}pokemon/${file}`;
+// with the build in the url, so a deploy never shows the sheets cached by Cloudflare or the browser. A dev
+// server started before it was added to vite.config.ts doesn't have it: then the url just has no version
+const BUILD = typeof __BUILD_ID__ === "undefined" ? "" : __BUILD_ID__;
+export const url = (file: string) => `${import.meta.env.BASE_URL}pokemon/${file}${BUILD && `?v=${BUILD}`}`;
 
 /* ------------------------------------------------------------------ */
 /* Player                                                              */
@@ -30,7 +33,8 @@ export interface SheetLayout {
   offsetY: number;
   rows: Partial<Record<Dir, number>>;
   idleFrame: number;
-  walkFrames: readonly [number, number];
+  /** Step frames, alternating from tile to tile (one is fine: the same step every tile). */
+  walkFrames: readonly [number, ...number[]];
   stepFraction: number;
 }
 
@@ -50,8 +54,8 @@ export interface SheetLayout {
  * so the sprite goes idle - step A - idle - step B - idle...
  * `stepFraction` is how much of each tile the step frame is shown (0..1).
  *
- * The sprite is anchored to the bottom of its tile: a taller sprite (like
- * this 22px one) simply sticks out above the tile. offsetY = 16 - frameH.
+ * The sprite is anchored to the bottom of its tile: a taller sprite simply
+ * sticks out above the tile. offsetY = 16 - frameH (0 for these 16px frames).
  */
 export const PLAYER_SPRITE = {
   src: url("player.png"),
@@ -59,10 +63,10 @@ export const PLAYER_SPRITE = {
   frameH: 16,
   /** Draw offset from the tile's top-left corner (negative offsetY for sprites taller than a tile). */
   offsetX: 0,
-  offsetY: -6,
+  offsetY: 0,
   rows: { down: 0, up: 1, left: 2 } as Partial<Record<Dir, number>>,
   idleFrame: 0,
-  /** Columns used for the two alternating step frames. */
+  /** Column of the step frame (this sheet has only one, used on every tile). */
   walkFrames: [1] as const,
   stepFraction: .5,
 };
@@ -90,7 +94,7 @@ export const NPC_LAYOUT: SheetLayout = {
   frameW: 16,
   frameH: 16,
   offsetX: 0,
-  offsetY: -6,
+  offsetY: 0,
   rows: { down: 0, up: 1, left: 2 },
   idleFrame: 0,
   walkFrames: [1, 2],

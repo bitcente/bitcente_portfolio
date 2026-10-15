@@ -1,0 +1,175 @@
+/* PACMAN PAGE */
+
+.pacman {
+  --pacman-yellow: #ffff00;
+  --pacman-blue: #2121ff;
+  --pacman-white: #dedeff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  background-color: #000000;
+  color: var(--pacman-white);
+  user-select: none;
+  touch-action: none;
+}
+
+.pacman__screen {
+  position: relative;
+  line-height: 0;
+}
+.pacman__screen canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.pacman__yellow {
+  color: var(--pacman-yellow);
+}
+.pacman__red {
+  color: #ff0000;
+}
+
+/* pause and the end of a game, over the screen */
+.pacman__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  line-height: 1.2;
+  background-color: rgba(0, 0, 0, .84);
+}
+
+.pacman__scores {
+  width: 100%;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  text-align: left;
+}
+.pacman__scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pacman__scores li:first-child {
+  color: var(--pacman-yellow);
+}
+/* the score just saved */
+.pacman__scores li.is-new {
+  padding: 0 4px;
+  background-color: var(--pacman-blue);
+  color: var(--pacman-white);
+}
+
+/* the name entry is the one of tetris, in the colours of this machine */
+.pacman .name-entry__letter.is-current::after {
+  background-color: var(--pacman-yellow);
+}
+.pacman .name-entry__ok {
+  border-color: var(--pacman-yellow) !important;
+}
+
+.pacman__bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  color: #8a8ab8;
+}
+.pacman__sound, .pacman__pause {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--pacman-white);
+  font-family: inherit;
+}
+.pacman__sound svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* the volume bar: a corridor of the maze, pacman eats the dots up to the volume */
+.volume--pacman .volume__panel {
+  top: auto;
+  bottom: calc(100% + 10px);
+  padding: 10px 14px;
+  border: 4px double var(--pacman-blue);
+  border-radius: 8px;
+  background-color: #000000;
+}
+.volume--pacman .volume__track {
+  width: 156px;
+  height: 18px;
+  background: radial-gradient(circle, #ffb8ae 0 2px, transparent 2.5px) 0 50% / 12px 12px repeat-x;
+}
+/* the part already eaten has no dots */
+.volume--pacman .volume__fill {
+  background-color: #000000;
+}
+.volume--pacman .volume__thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(from 120deg, var(--pacman-yellow) 0 300deg, transparent 300deg);
+}
+.pacman__pause {
+  padding: 4px 10px;
+  border: 3px solid var(--pacman-blue);
+}
+
+/* the pad of the phones: up, left and right, down */
+.pacman__pad {
+  display: grid;
+  grid-template-columns: repeat(3, min(62px, 17vw));
+  grid-template-rows: repeat(3, min(52px, 14vw));
+  grid-template-areas: ". up ." "left . right" ". down .";
+  gap: 4px;
+}
+.pacman__button {
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid var(--pacman-blue);
+  border-radius: 10px;
+  background: none;
+  color: var(--pacman-yellow);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  touch-action: none;
+}
+.pacman__button:active {
+  background-color: var(--pacman-blue);
+}
+.pacman__button--up {
+  grid-area: up;
+}
+.pacman__button--left {
+  grid-area: left;
+}
+.pacman__button--right {
+  grid-area: right;
+}
+.pacman__button--down {
+  grid-area: down;
+}

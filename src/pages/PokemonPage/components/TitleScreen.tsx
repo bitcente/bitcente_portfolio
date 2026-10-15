@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { InputSubscribe } from "../types";
 import { MenuList } from "./MenuList";
+import { TitleLogo, TitleTrainer } from "./TitleArt";
 
 interface Props {
   hasSave: boolean;
@@ -13,6 +14,7 @@ interface Props {
  * With a save: CONTINUE / NEW GAME menu. Choosing NEW GAME asks for
  * confirmation first, because it deletes the saved game.
  * Without a save: PRESS START (click, A or Start).
+ * The logo and the trainer throwing his ball are animated (TitleArt).
  */
 export function TitleScreen({ hasSave, subscribe, onNew, onContinue }: Props) {
   const [confirming, setConfirming] = useState(false);
@@ -36,29 +38,36 @@ export function TitleScreen({ hasSave, subscribe, onNew, onContinue }: Props) {
 
   return (
     <div className="gb-title" onClick={hasSave ? undefined : onNew}>
-      <div className="gb-title-name">
-        POCKET
-        <br />
-        QUEST
-      </div>
+      <TitleLogo
+        fallback={
+          <div className="gb-title-name">
+            POCKET
+            <br />
+            QUEST
+          </div>
+        }
+      />
 
-      {hasSave ? (
-        <div className="gb-title-menu">
-          {options.map((o, i) => (
-            <button
-              key={o.label}
-              className="gb-menu-item"
-              onPointerEnter={() => setCursor(i)}
-              onClick={o.run}
-            >
-              {cursor === i ? ">" : "\u00a0"}
-              {o.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="gb-title-start gb-blink">PRESS START</div>
-      )}
+      <div className="gb-title-row">
+        {hasSave ? (
+          <div className="gb-title-menu">
+            {options.map((o, i) => (
+              <button
+                key={o.label}
+                className="gb-menu-item"
+                onPointerEnter={() => setCursor(i)}
+                onClick={o.run}
+              >
+                {cursor === i ? ">" : "\u00a0"}
+                {o.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="gb-title-start gb-blink">PRESS START</div>
+        )}
+        <TitleTrainer />
+      </div>
 
       <div className="gb-title-hint">ARROWS MOVE · Z = A · X = B</div>
 

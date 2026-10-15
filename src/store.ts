@@ -16,10 +16,23 @@ const readMuted = () => {
     }
 }
 
+const VOLUME_KEY = "volume"
+const readVolume = () => {
+    try {
+        const saved = localStorage.getItem(VOLUME_KEY)
+        return saved === null ? 1 : Math.min(1, Math.max(0, Number(saved) || 0))
+    } catch {
+        return 1
+    }
+}
+
 interface ExperienceState {
-    // every sound and song of the web silenced
+    // every sound and song of the web silenced (the M key), whatever the volume
     muted: boolean
     toggleMuted: () => void
+    // volume of the whole web, 0 to 1 (the bar of the sound buttons). Changing it turns the sound back on
+    volume: number
+    setVolume: (volume: number) => void
     // how many things are taking typed letters right now (the M key isn't for muting then)
     typingClaims: number
     claimTyping: (amount: number) => void
@@ -54,6 +67,16 @@ export const useBitcenteStore = create<ExperienceState>()((set) => ({
             /* storage unavailable */
         }
         return { muted: !state.muted }
+    }),
+    volume: readVolume(),
+    setVolume: (volume) => set(() => {
+        try {
+            localStorage.setItem(VOLUME_KEY, String(volume))
+            localStorage.setItem(MUTED_KEY, "0")
+        } catch {
+            /* storage unavailable */
+        }
+        return { volume, muted: false }
     }),
     typingClaims: 0,
     claimTyping: (amount) => set((state) => ({ typingClaims: state.typingClaims + amount })),

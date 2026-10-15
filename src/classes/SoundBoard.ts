@@ -80,23 +80,35 @@ export class SoundBoardClass {
     }
 
     muted = false;
-    // songs played with <audio> (music), muted along with the rest
+    volume = 1;
+    // songs played with <audio> (music) that couldn't go through the output, muted on their own
     tracked = new Set<HTMLAudioElement>();
 
     updateMute = () => {
-        this.output.gain.value = document.hidden || this.muted ? 0 : 1;
+        // squared: the bar feels even, the ear hears loudness that way
+        this.output.gain.value = document.hidden || this.muted ? 0 : this.volume * this.volume;
     }
 
     setMuted(muted: boolean) {
         this.muted = muted;
         this.updateMute();
-        this.tracked.forEach((audio) => { audio.muted = muted; });
+        this.tracked.forEach((audio) => { audio.muted = muted || this.volume === 0; });
     }
 
-    // an <audio> that has to follow the mute button
+    setVolume(volume: number) {
+        this.volume = volume;
+        this.setMuted(this.muted);
+    }
+
+    // an <audio> that has to follow the volume and the mute: it plays through the output like every other sound
+    // (its own volume stays free for fades)
     track(audio: HTMLAudioElement) {
-        audio.muted = this.muted;
-        this.tracked.add(audio);
+        try {
+            this.audioContext.createMediaElementSource(audio).connect(this.output);
+        } catch {
+            audio.muted = this.muted;
+            this.tracked.add(audio);
+        }
         return audio;
     }
 

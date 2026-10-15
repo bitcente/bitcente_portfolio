@@ -256,6 +256,30 @@ body {
   width: 100%;
   height: 100%;
 }
+/* its volume bar, under the icons: pixel blocks in the greens of the web */
+.volume--site .volume__panel {
+  top: calc(100% + 10px);
+  right: 0;
+  left: auto;
+  padding: 12px 14px;
+  border: 3px solid var(--green-1);
+  background-color: var(--green-4);
+}
+.volume--site .volume__track {
+  width: 168px;
+  height: 18px;
+  border: 3px solid var(--green-1);
+  background-color: var(--green-3);
+}
+.volume--site .volume__fill {
+  background: repeating-linear-gradient(90deg, var(--green-1) 0 9px, var(--green-2) 9px 12px);
+}
+.volume--site .volume__thumb {
+  width: 10px;
+  height: 28px;
+  border: 3px solid var(--green-1);
+  background-color: var(--green-4);
+}
 
 .socials img {
   height: 100%;
@@ -756,11 +780,34 @@ body.projects-view .logo__wrapper * {
 
 
 /* mute button (MuteButton.tsx): over the pages, the CRT effect and the arcade room, under the cursor */
-.mute-button {
+/* the sound button of /old, alone in the top left corner, and its bar to the right of it */
+.volume--old {
   position: fixed;
   top: 6px;
   left: 6px;
   z-index: 60;
+}
+.volume--old .volume__panel {
+  top: 0;
+  left: calc(100% + 6px);
+  padding: 6px 8px;
+  border: 2px solid var(--green-1);
+  background-color: var(--green-4);
+}
+.volume--old .volume__track {
+  width: 110px;
+  height: 10px;
+  border: 2px solid var(--green-1);
+}
+.volume--old .volume__fill {
+  background-color: var(--green-1);
+}
+.volume--old .volume__thumb {
+  width: 6px;
+  height: 18px;
+  background-color: var(--green-1);
+}
+.mute-button {
   width: 26px;
   height: 26px;
   padding: 4px;

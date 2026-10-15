@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useArcadeStore, usePlaying } from "../../arcade/store"
 import { isTouchDevice } from "../../utils/Screen"
-import { makesTheBoard, useLeaderboard } from "../../leaderboard"
+import { LEADERBOARDS, makesTheBoard, recordScore, useHighScore } from "../../leaderboard"
 import Tetris, { CLEAR_TIME, COLS, QUEUE_SIZE, ROWS, shapeOf } from "./tetris"
 import NameEntry, { Letters, lettersToName, NAME_LENGTH, nameKey } from "./NameEntry"
 import { popBonus, shake } from "./effects"
-import { SpeakerIcon, useMuteButton } from "../../components/MuteButton"
+import { drawBackdrop } from "./backdrop"
+import { VolumeControl } from "../../components/MuteButton"
 import { Sound, soundBoard } from "../../classes/SoundBoard"
 import type { GameSound } from "./tetris"
 import "./tetris.css"
 
-// the 4 greens of the web, from dark to light
-const PALETTE = ["#0D1403", "#576833", "#7F8E5A", "#A8B987"]
-const BOARD_COLOR = "#97a876"
+// colour of each piece, like the arcade: I, O, T, S, Z, J, L
+const PIECE_COLORS = ["#2ee6f0", "#ffd52e", "#b54cff", "#4be04b", "#ff3b3b", "#3b6bff", "#ff9a2e"]
+const BOARD_COLOR = "rgba(6, 8, 24, .86)"
+const GRID_COLOR = "rgba(255, 255, 255, .05)"
+
 type Action = "left" | "right" | "down" | "rotate" | "drop" | "hold"
 
 // biggest block that lets the whole board fit next to (or, in portrait, under) the hud
@@ -23,57 +26,66 @@ function blockSize() {
   return Math.max(8, Math.floor(Math.min(width / COLS, height / ROWS)))
 }
 
-// each piece is drawn with one of 3 patterns, the way a 4 tone screen tells them apart
-function drawBlock(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, type: number) {
-  const gap = Math.max(1, Math.round(size * .06))
-  const inner = size - gap * 2
-  ctx.fillStyle = PALETTE[0]
-  ctx.fillRect(x + gap, y + gap, inner, inner)
+// a colour mixed with white (amount > 0) or black (amount < 0)
+function shade(hex: string, amount: number) {
+  const target = amount > 0 ? 255 : 0
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${ channels.map((value) => Math.round(value + (target - value) * Math.abs(amount))).join(",") })`
+}
 
-  const pattern = type % 3
-  if (pattern === 0) {
-    const inset = Math.round(size * .3)
-    ctx.fillStyle = PALETTE[1]
-    ctx.fillRect(x + inset, y + inset, size - inset * 2, size - inset * 2)
-  } else if (pattern === 1) {
-    const inset = Math.round(size * .22)
-    ctx.fillStyle = PALETTE[3]
-    ctx.fillRect(x + inset, y + inset, size - inset * 2, size - inset * 2)
-  } else {
-    const inset = Math.round(size * .16)
-    const dot = Math.round(size * .38)
-    ctx.fillStyle = PALETTE[2]
-    ctx.fillRect(x + inset, y + inset, size - inset * 2, size - inset * 2)
-    ctx.fillStyle = PALETTE[0]
-    ctx.fillRect(x + dot, y + dot, size - dot * 2, size - dot * 2)
-  }
+// a bevelled block: lit from the top left, in the shadow at the bottom right, with a shine in the corner.
+// White while its line is flashing before it goes
+function drawBlock(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, type: number, flash = false) {
+  const color = flash ? "#ffffff" : PIECE_COLORS[type % PIECE_COLORS.length]
+  const gap = Math.max(1, Math.round(size * .04))
+  const bevel = Math.max(1, Math.round(size * .14))
+  const inner = size - gap * 2
+  const left = x + gap
+  const top = y + gap
+
+  ctx.fillStyle = color
+  ctx.fillRect(left, top, inner, inner)
+  ctx.fillStyle = shade(color, .55)
+  ctx.fillRect(left, top, inner, bevel)
+  ctx.fillRect(left, top, bevel, inner)
+  ctx.fillStyle = shade(color, -.45)
+  ctx.fillRect(left, top + inner - bevel, inner, bevel)
+  ctx.fillRect(left + inner - bevel, top + bevel, bevel, inner - bevel)
+  ctx.fillStyle = "rgba(255, 255, 255, .7)"
+  ctx.fillRect(left + bevel, top + bevel, Math.max(1, Math.round(size * .14)), Math.max(1, Math.round(size * .14)))
 }
 
 function drawBoard(ctx: CanvasRenderingContext2D, game: Tetris, size: number) {
+  ctx.clearRect(0, 0, COLS * size, ROWS * size)
   ctx.fillStyle = BOARD_COLOR
   ctx.fillRect(0, 0, COLS * size, ROWS * size)
+  ctx.fillStyle = GRID_COLOR
+  for (let x = 1; x < COLS; x++) ctx.fillRect(x * size, 0, 1, ROWS * size)
+  for (let y = 1; y < ROWS; y++) ctx.fillRect(0, y * size, COLS * size, 1)
 
-  // the cleared lines blink before they go
-  const blink = game.clearing.length > 0 && Math.floor(game.clearTimer / (CLEAR_TIME / 4)) % 2 === 0
+  // the cleared lines flash white before they go
+  const flash = game.clearing.length > 0 && Math.floor(game.clearTimer / (CLEAR_TIME / 4)) % 2 === 0
   game.board.forEach((row, y) => {
-    if (blink && game.clearing.includes(y)) return
+    const clearing = game.clearing.includes(y)
     row.forEach((block, x) => {
-      if (block) drawBlock(ctx, x * size, y * size, size, block - 1)
+      if (block) drawBlock(ctx, x * size, y * size, size, block - 1, clearing && flash)
     })
   })
 
   const piece = game.piece
   if (!piece) return
 
-  // outline of where the piece is going to land
+  // outline of where the piece is going to land, in its colour
   const landing = game.landingY()
   const line = Math.max(1, Math.round(size * .08))
-  ctx.strokeStyle = PALETTE[1]
+  ctx.strokeStyle = PIECE_COLORS[piece.type]
+  ctx.globalAlpha = .55
   ctx.lineWidth = line
   piece.cells.forEach((row, cy) => row.forEach((filled, cx) => {
     if (!filled || landing + cy < 0) return
     ctx.strokeRect((piece.x + cx) * size + line * 1.5, (landing + cy) * size + line * 1.5, size - line * 3, size - line * 3)
   }))
+  ctx.globalAlpha = 1
 
   piece.cells.forEach((row, cy) => row.forEach((filled, cx) => {
     if (filled && piece.y + cy >= 0) drawBlock(ctx, (piece.x + cx) * size, (piece.y + cy) * size, size, piece.type)
@@ -130,6 +142,8 @@ function drawPreview(canvas: HTMLCanvasElement | null, type: number | null, size
   }))
 }
 
+const useLeaderboard = LEADERBOARDS.tetris
+
 const hudOf = (game: Tetris) => ({
   score: game.score,
   lines: game.lines,
@@ -152,9 +166,9 @@ export default function TetrisPage() {
   const queueRefs = useRef<(HTMLCanvasElement | null)[]>([])
   const boardWrapRef = useRef<HTMLDivElement>(null)
   const holdRef = useRef<HTMLCanvasElement>(null)
+  const backdropRef = useRef<HTMLCanvasElement>(null)
 
   const touch = isTouchDevice()
-  const mute = useMuteButton()
   // the keyboard is only for this game while its arcade machine is the one being played
   const playing = usePlaying()
   const settled = useArcadeStore((state) => state.settled)
@@ -163,6 +177,7 @@ export default function TetrisPage() {
 
   const scores = useLeaderboard((state) => state.scores)
   const leaderboardStatus = useLeaderboard((state) => state.status)
+  const high = useHighScore("tetris")
   const [ending, setEnding] = useState<Ending>("checking")
   const [letters, setLetters] = useState<Letters>(() => new Array(NAME_LENGTH).fill(0))
   const [cursor, setCursor] = useState(0)
@@ -253,13 +268,14 @@ export default function TetrisPage() {
   // at the end of a game, the latest leaderboard says whether the score makes it
   useEffect(() => {
     if (hud.status !== "over") return
+    recordScore("tetris", game.score)
     setEnding("checking")
     setRank(null)
     setSaveError(null)
     setCursor(0)
     let alive = true
     useLeaderboard.getState().refresh().then(() => {
-      if (alive) setEnding(makesTheBoard(game.score) ? "entry" : "board")
+      if (alive) setEnding(makesTheBoard("tetris", game.score) ? "entry" : "board")
     })
     return () => { alive = false }
   }, [hud.status])
@@ -290,6 +306,14 @@ export default function TetrisPage() {
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [game, size])
+
+  // the scene behind changes with every level
+  useEffect(() => {
+    const draw = () => { if (backdropRef.current) drawBackdrop(backdropRef.current, hud.level) }
+    draw()
+    window.addEventListener("resize", draw)
+    return () => window.removeEventListener("resize", draw)
+  }, [hud.level])
 
   // next piece and the one kept aside, each centred in its box
   useEffect(() => {
@@ -404,10 +428,11 @@ export default function TetrisPage() {
 
   return (
     <div className="tetris">
+      <canvas className="tetris__backdrop" ref={ backdropRef } aria-hidden="true"></canvas>
       <div className="tetris__game">
         <div className="tetris__side">
           <div className="tetris__stat tetris__stat--hold">
-            <span className="text-s green-2">Hold</span>
+            <span className="text-s tetris__label">Hold</span>
             <canvas ref={ holdRef }></canvas>
           </div>
         </div>
@@ -416,7 +441,13 @@ export default function TetrisPage() {
           <canvas ref={ boardRef }></canvas>
 
           { hud.status !== "playing" && <div className="tetris__overlay" onClick={ () => canRestart && startOrResume() }>
-            { hud.status === "title" && <span className="title-m">Tetris</span> }
+            { hud.status === "title" && <>
+              <span className="title-m">Tetris</span>
+              { high.score > 0 && <span className="tetris__best text-m">
+                <span className="tetris__label">High score</span>
+                <span>{ high.score }{ high.name && ` · ${ high.name }` }</span>
+              </span> }
+            </> }
             { hud.status === "paused" && <span className="title-s">Paused</span> }
 
             { hud.status === "over" && ending === "checking" && <>
@@ -461,27 +492,24 @@ export default function TetrisPage() {
 
         <div className="tetris__hud">
           <div className="tetris__stat tetris__stat--next">
-            <span className="text-s green-2">Next</span>
+            <span className="text-s tetris__label">Next</span>
             {Array.from({ length: QUEUE_SIZE }, (_, i) => (
               <canvas ref={ (canvas) => { queueRefs.current[i] = canvas } } key={ i }></canvas>
             ))}
           </div>
           <div className="tetris__stat">
-            <span className="text-s green-2">Score</span>
+            <span className="text-s tetris__label">Score</span>
             <span className="title-s">{ hud.score }</span>
           </div>
           <div className="tetris__stat">
-            <span className="text-s green-2">Lines</span>
+            <span className="text-s tetris__label">Lines</span>
             <span className="title-s">{ hud.lines }</span>
           </div>
           <div className="tetris__stat">
-            <span className="text-s green-2">Level</span>
+            <span className="text-s tetris__label">Level</span>
             <span className="title-s">{ hud.level }</span>
           </div>
-          <button className="tetris__sound text-s" { ...mute.props }>
-            <SpeakerIcon muted={ mute.muted } />
-            { mute.muted ? "Sound off" : "Sound on" }
-          </button>
+          <VolumeControl variant="tetris" buttonClassName="tetris__sound text-s" label />
           { (hud.status === "playing" || hud.status === "paused") && <button
             className="tetris__restart text-s"
             // never keeps the focus: space (hard drop) would press it again and restart the game
@@ -493,7 +521,7 @@ export default function TetrisPage() {
         </div>
       </div>
 
-      { !touch && <div className="tetris__keys text-s green-2">
+      { !touch && <div className="tetris__keys text-s">
         ← → Move · ↑ Rotate · ↓ Soft drop · Space Drop · Shift Hold · P Pause · R Restart
       </div> }
 
